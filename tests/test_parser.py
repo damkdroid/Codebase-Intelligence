@@ -1,4 +1,3 @@
-"""Unit tests for AST code parser."""
 
 from pathlib import Path
 from parser import parse_python_file, parse_repository

@@ -11,7 +11,6 @@ from parser import FunctionEntity
 
 @dataclass
 class SearchResult:
-    """Represents a ranked match for a search query."""
     entity: FunctionEntity
     score: float
     rank: int
@@ -42,7 +41,6 @@ class SearchResult:
 
 
 class CodeSearchEngine:
-    """TF-IDF and Cosine Similarity vector search engine for code entities."""
 
     def __init__(self):
         self.vectorizer = TfidfVectorizer(
@@ -56,7 +54,6 @@ class CodeSearchEngine:
         self.is_indexed: bool = False
 
     def index(self, entities: List[FunctionEntity]) -> None:
-        """Build TF-IDF matrix from code entities."""
         self.entities = entities
         if not entities:
             self.tfidf_matrix = None
@@ -76,16 +73,6 @@ class CodeSearchEngine:
     def search(
         self, query: str, top_k: int = 10, min_score: float = 0.001
     ) -> List[SearchResult]:
-        """Search indexed code entities using natural language query.
-
-        Args:
-            query: User's search text.
-            top_k: Maximum number of matches to return.
-            min_score: Minimum cosine similarity score threshold (default 0.001).
-
-        Returns:
-            Ranked list of SearchResult objects sorted by score descending.
-        """
         if not self.is_indexed or not query.strip() or self.tfidf_matrix is None:
             return []
 

@@ -1,4 +1,3 @@
-"""Unit tests for NetworkX internal dependency graph."""
 
 from pathlib import Path
 from parser import ParsedFile, ImportInfo

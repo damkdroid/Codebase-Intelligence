@@ -1,4 +1,3 @@
-"""Unit tests for repository scanner and exclusions."""
 
 import pytest
 from pathlib import Path

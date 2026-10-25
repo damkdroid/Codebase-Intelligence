@@ -9,7 +9,6 @@ from typing import List, Optional
 
 @dataclass
 class ImportInfo:
-    """Represents an import statement in a Python file."""
     module: Optional[str]
     names: List[str]
     level: int
@@ -19,7 +18,6 @@ class ImportInfo:
 
 @dataclass
 class FunctionEntity:
-    """Represents a parsed function or method entity."""
     name: str
     parent_class: Optional[str]
     file_path: str
@@ -32,14 +30,12 @@ class FunctionEntity:
 
     @property
     def full_name(self) -> str:
-        """Return 'ClassName.func_name' or 'func_name'."""
         if self.parent_class:
             return f"{self.parent_class}.{self.name}"
         return self.name
 
     @property
     def searchable_text(self) -> str:
-        """Combined representation for TF-IDF indexing."""
         parts = [
             self.full_name,
             " ".join(self.args),
@@ -51,7 +47,6 @@ class FunctionEntity:
 
 @dataclass
 class ClassInfo:
-    """Represents a parsed class definition."""
     name: str
     file_path: str
     line_start: int
@@ -63,7 +58,6 @@ class ClassInfo:
 
 @dataclass
 class ParsedFile:
-    """Represents the complete parsed structure of a Python file."""
     file_path: str
     absolute_path: str
     line_count: int
@@ -74,7 +68,6 @@ class ParsedFile:
 
 
 class CodeVisitor(ast.NodeVisitor):
-    """AST Visitor that traverses module nodes and collects code entities."""
 
     def __init__(self, rel_path: str, source_lines: List[str]):
         self.rel_path = rel_path
@@ -85,13 +78,11 @@ class CodeVisitor(ast.NodeVisitor):
         self._current_class: Optional[str] = None
 
     def _extract_source_snippet(self, start_line: int, end_line: int) -> str:
-        """Extract source code slice using 1-based line numbers."""
         start_idx = max(0, start_line - 1)
         end_idx = min(len(self.source_lines), end_line)
         return "".join(self.source_lines[start_idx:end_idx]).strip()
 
     def _get_arg_names(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> List[str]:
-        """Extract argument names from function signature."""
         return [arg.arg for arg in node.args.args if arg.arg not in ("self", "cls")]
 
     def visit_Import(self, node: ast.Import) -> None:
@@ -181,11 +172,6 @@ class CodeVisitor(ast.NodeVisitor):
 
 
 def parse_python_file(file_path: Path, repo_root: Path) -> ParsedFile:
-    """Parse a single Python file into a ParsedFile instance.
-
-    Handles SyntaxError, UnicodeDecodeError, and unexpected parsing errors
-    safely without crashing.
-    """
     try:
         rel_path = str(file_path.resolve().relative_to(repo_root.resolve())).replace("\\", "/")
     except ValueError:
@@ -248,7 +234,6 @@ def parse_python_file(file_path: Path, repo_root: Path) -> ParsedFile:
 
 
 def parse_repository(repo_path: str | Path, python_files: List[Path]) -> List[ParsedFile]:
-    """Parse a collection of Python files belonging to a repository."""
     root = Path(repo_path).resolve()
     parsed_results: List[ParsedFile] = []
     for f in python_files:

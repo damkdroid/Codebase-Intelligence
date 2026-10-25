@@ -123,7 +123,6 @@ CATEGORY_STYLES: Dict[str, Dict[str, Dict[str, str]]] = {
 
 
 def get_theme_css(theme: str) -> str:
-    """Generate complete CSS stylesheet matching active theme."""
     t = THEME_CONFIG.get(theme, THEME_CONFIG["light"])
     is_dark = (theme == "dark")
 
@@ -511,7 +510,6 @@ def get_theme_css(theme: str) -> str:
 
 
 def highlight_terms_in_html(html_str: str, query: Optional[str]) -> str:
-    """Highlight matched query words inside HTML text nodes safely."""
     if not query:
         return html_str
 
@@ -537,19 +535,6 @@ def render_code_block(
     query: Optional[str] = None,
     is_dark: bool = False,
 ) -> str:
-    """Render a syntax-highlighted code block with line numbering & Obsidian styling.
-
-    Args:
-        source_code: Python source code snippet.
-        file_path: Optional file path to show in header.
-        line_start: 1-indexed starting line number.
-        line_end: Optional 1-indexed ending line number.
-        query: Optional search query to highlight matching terms.
-        is_dark: Boolean indicating if dark theme is active.
-
-    Returns:
-        Safe HTML string ready to render via st.html or st.markdown.
-    """
     clean_code = source_code.rstrip()
     if not clean_code:
         return ""
@@ -604,7 +589,6 @@ def render_code_block(
 
 
 def render_category_tag(category: str, confidence: Optional[float] = None, is_dark: bool = False) -> str:
-    """Return an HTML tag with restrained category coloring and confidence score."""
     mode = "dark" if is_dark else "light"
     styles = CATEGORY_STYLES[mode].get(category, {"bg": "#f4f4f5", "border": "#e4e4e7", "text": "#52525b"})
     

@@ -1,4 +1,3 @@
-"""End-to-end integration test verifying all 5 features on sample_project."""
 
 from pathlib import Path
 from scanner import scan_python_files

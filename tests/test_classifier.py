@@ -1,4 +1,3 @@
-"""Unit tests for automatic code classifier."""
 
 from classifier import CodeClassifier, CATEGORIES
 

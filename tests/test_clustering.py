@@ -1,4 +1,3 @@
-"""Unit tests for code clustering module."""
 
 from parser import FunctionEntity
 from clustering import CodeClusterer

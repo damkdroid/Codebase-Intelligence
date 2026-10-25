@@ -20,7 +20,6 @@ CATEGORIES: List[str] = [
 
 @dataclass
 class ClassificationResult:
-    """Prediction outcome for a code entity."""
     category: str
     confidence: float
     probabilities: Dict[str, float]
@@ -34,7 +33,6 @@ class ClassificationResult:
 
 
 class CodeClassifier:
-    """TF-IDF + Logistic Regression model for code snippet classification."""
 
     def __init__(self, training_data_path: Optional[str | Path] = None):
         if training_data_path is None:
@@ -58,7 +56,6 @@ class CodeClassifier:
         self._load_and_train()
 
     def _load_and_train(self) -> None:
-        """Load labeled data from JSON and fit the model."""
         if not self.training_data_path.exists():
             raise FileNotFoundError(
                 f"Training dataset not found at {self.training_data_path}"
@@ -87,7 +84,6 @@ class CodeClassifier:
         self.is_trained = True
 
     def predict(self, code_text: str) -> ClassificationResult:
-        """Classify a single code snippet, returning predicted category and confidence."""
         if not self.is_trained:
             raise RuntimeError("Classifier has not been trained.")
 
@@ -115,7 +111,6 @@ class CodeClassifier:
         )
 
     def get_dataset_info(self) -> Dict[str, Any]:
-        """Metadata about the transparent baseline training set."""
         total = sum(self.training_counts.values())
         return {
             "total_samples": total,

@@ -31,16 +31,6 @@ DEFAULT_EXCLUDED_DIRS: Set[str] = {
 
 
 def is_excluded_path(path: Path, root: Path, excluded_names: Set[str]) -> bool:
-    """Check if a path or any of its parent components match the exclusion set.
-
-    Args:
-        path: Absolute or relative Path to test.
-        root: Root directory of the scan.
-        excluded_names: Set of directory or file names to ignore (case-insensitive).
-
-    Returns:
-        True if the path should be excluded, False otherwise.
-    """
     try:
         rel_path = path.relative_to(root)
     except ValueError:
@@ -60,19 +50,6 @@ def scan_python_files(
     repo_path: str | Path,
     custom_excludes: Optional[Iterable[str]] = None
 ) -> List[Path]:
-    """Recursively scan a repository path for .py files, ignoring excluded dirs.
-
-    Args:
-        repo_path: Path to the root directory to scan.
-        custom_excludes: Optional additional folder/file names to ignore.
-
-    Returns:
-        Sorted list of Path objects for discovered Python files.
-
-    Raises:
-        FileNotFoundError: If repo_path does not exist.
-        NotADirectoryError: If repo_path is not a directory.
-    """
     root = Path(repo_path).resolve()
     if not root.exists():
         raise FileNotFoundError(f"Repository path does not exist: {root}")

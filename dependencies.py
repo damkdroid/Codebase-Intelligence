@@ -10,18 +10,10 @@ from parser import ParsedFile, ImportInfo
 
 
 def normalize_rel_path(path_str: str) -> str:
-    """Normalize path separators to forward slash."""
     return path_str.replace("\\", "/").lstrip("./")
 
 
 def build_module_lookup(parsed_files: List[ParsedFile]) -> Dict[str, str]:
-    """Map dotted Python module names to relative file paths.
-
-    Example mappings:
-        'sample_project.auth' -> 'sample_project/auth.py'
-        'sample_project' -> 'sample_project/__init__.py'
-        'auth' -> 'sample_project/auth.py' (if unique)
-    """
     lookup: Dict[str, str] = {}
     stem_counts: Dict[str, List[str]] = {}
 
@@ -57,7 +49,6 @@ def resolve_relative_import(
     level: int,
     module_lookup: Dict[str, str]
 ) -> Optional[str]:
-    """Resolve relative import like `from .db import query` or `from ..config import cfg`."""
     current_parts = list(Path(normalize_rel_path(current_file_path)).parent.parts)
 
     up_steps = level - 1
@@ -87,7 +78,6 @@ def resolve_import(
     imp: ImportInfo,
     module_lookup: Dict[str, str]
 ) -> List[str]:
-    """Resolve an ImportInfo to a list of matching internal target file paths."""
     resolved_targets: Set[str] = set()
 
     if imp.level > 0:
@@ -139,11 +129,6 @@ def resolve_import(
 
 
 def build_dependency_graph(parsed_files: List[ParsedFile]) -> nx.DiGraph:
-    """Construct a directed graph of internal file imports.
-
-    Nodes: Relative file paths of internal Python files.
-    Edges: (source, target) indicating source imports target.
-    """
     graph = nx.DiGraph()
     module_lookup = build_module_lookup(parsed_files)
 
@@ -172,7 +157,6 @@ def build_dependency_graph(parsed_files: List[ParsedFile]) -> nx.DiGraph:
 
 
 def get_graph_metrics(graph: nx.DiGraph) -> Dict[str, Any]:
-    """Calculate key architectural metrics on the dependency graph."""
     num_nodes = graph.number_of_nodes()
     num_edges = graph.number_of_edges()
 
@@ -203,7 +187,6 @@ def get_graph_metrics(graph: nx.DiGraph) -> Dict[str, Any]:
 def render_graph_figure(
     graph: nx.DiGraph, figsize: Tuple[int, int] = (11, 7), is_dark: bool = False
 ) -> plt.Figure:
-    """Render a clean, publication-ready visualization of the directed graph."""
     bg_color = "#18191c" if is_dark else "#fbfbfa"
     text_color = "#e6e6e8" if is_dark else "#1a1a1c"
     edge_color = "#64748b" if is_dark else "#94a3b8"

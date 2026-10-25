@@ -25,7 +25,6 @@ st.set_page_config(
 
 
 def display_html(html_str: str):
-    """Safely render HTML, preferring native st.html for clean DOM output."""
     if hasattr(st, "html"):
         st.html(html_str)
     else:
@@ -34,12 +33,10 @@ def display_html(html_str: str):
 
 @st.cache_resource(show_spinner=False)
 def get_classifier() -> CodeClassifier:
-    """Cache the trained classifier across application reruns."""
     return CodeClassifier()
 
 
 def init_session_state():
-    """Initialize session state and query parameter theme persistence."""
     url_theme = st.query_params.get("theme", None)
     if "theme" not in st.session_state:
         st.session_state.theme = url_theme if url_theme in ("light", "dark") else "dark"
@@ -69,7 +66,6 @@ def init_session_state():
 
 
 def run_scan(target_dir: str):
-    """Scan and parse the repository, populating session state."""
     path_obj = Path(target_dir).resolve()
     if not path_obj.exists():
         st.sidebar.error(f"Path not found: {path_obj}")

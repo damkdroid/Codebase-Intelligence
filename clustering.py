@@ -12,7 +12,6 @@ from parser import FunctionEntity
 
 @dataclass
 class ClusterGroup:
-    """Represents a discovered cluster of functions."""
     cluster_id: int
     representative_terms: List[str]
     entities: List[FunctionEntity]
@@ -29,7 +28,6 @@ class ClusterGroup:
 
 @dataclass
 class ClusteringOutcome:
-    """Outcome of running K-means code clustering."""
     groups: List[ClusterGroup]
     requested_k: int
     effective_k: int
@@ -37,7 +35,6 @@ class ClusteringOutcome:
 
 
 class CodeClusterer:
-    """Clusters code entities using TF-IDF and K-Means."""
 
     def __init__(self, max_features: int = 1500):
         self.vectorizer = TfidfVectorizer(
@@ -55,17 +52,6 @@ class CodeClusterer:
         top_n_terms: int = 5,
         random_state: int = 42,
     ) -> ClusteringOutcome:
-        """Run K-Means clustering on the provided entities.
-
-        Args:
-            entities: List of FunctionEntity objects.
-            n_clusters: Desired number of clusters.
-            top_n_terms: Number of representative vocabulary terms per cluster.
-            random_state: Random seed for deterministic reproducibility.
-
-        Returns:
-            ClusteringOutcome containing cluster groups and adjustments.
-        """
         if not entities:
             return ClusteringOutcome(
                 groups=[],

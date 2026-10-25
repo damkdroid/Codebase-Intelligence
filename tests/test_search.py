@@ -1,4 +1,3 @@
-"""Unit tests for TF-IDF code search engine."""
 
 from parser import FunctionEntity
 from search import CodeSearchEngine
