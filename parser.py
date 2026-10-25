@@ -12,7 +12,7 @@ class ImportInfo:
     """Represents an import statement in a Python file."""
     module: Optional[str]
     names: List[str]
-    level: int  # 0 = absolute, >0 = relative (e.g., from .foo import bar)
+    level: int
     is_from: bool
     line_number: int
 
@@ -22,7 +22,7 @@ class FunctionEntity:
     """Represents a parsed function or method entity."""
     name: str
     parent_class: Optional[str]
-    file_path: str  # Relative path to repo root
+    file_path: str
     line_start: int
     line_end: int
     docstring: str
@@ -64,7 +64,7 @@ class ClassInfo:
 @dataclass
 class ParsedFile:
     """Represents the complete parsed structure of a Python file."""
-    file_path: str  # Relative path to repo root
+    file_path: str
     absolute_path: str
     line_count: int
     functions: List[FunctionEntity] = field(default_factory=list)
@@ -193,7 +193,6 @@ def parse_python_file(file_path: Path, repo_root: Path) -> ParsedFile:
 
     abs_path = str(file_path.resolve())
 
-    # Read file content safely
     try:
         content = file_path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
@@ -217,7 +216,6 @@ def parse_python_file(file_path: Path, repo_root: Path) -> ParsedFile:
     lines = content.splitlines(keepends=True)
     line_count = len(lines)
 
-    # Parse AST
     try:
         tree = ast.parse(content, filename=str(file_path))
     except SyntaxError as syn_err:

@@ -13,7 +13,7 @@ def test_internal_dependency_graph_building():
         imports=[
             ImportInfo(module="sample_project.config", names=["load_settings"], level=0, is_from=True, line_number=5),
             ImportInfo(module="sample_project.database", names=["DatabaseClient"], level=0, is_from=True, line_number=6),
-            ImportInfo(module="hashlib", names=["sha256"], level=0, is_from=True, line_number=1),  # External!
+            ImportInfo(module="hashlib", names=["sha256"], level=0, is_from=True, line_number=1),
         ],
     )
     f2 = ParsedFile(
@@ -36,7 +36,6 @@ def test_internal_dependency_graph_building():
     graph = build_dependency_graph([f1, f2, f3])
 
     assert graph.number_of_nodes() == 3
-    # auth -> config, auth -> database, database -> config => total 3 internal edges
     assert graph.number_of_edges() == 3
     assert graph.has_edge("sample_project/auth.py", "sample_project/config.py")
     assert graph.has_edge("sample_project/auth.py", "sample_project/database.py")
@@ -46,7 +45,6 @@ def test_internal_dependency_graph_building():
     assert metrics["num_nodes"] == 3
     assert metrics["num_edges"] == 3
     assert metrics["cycle_count"] == 0
-    # config is most depended on (in-degree 2)
     assert metrics["most_depended_on"][0][0] == "sample_project/config.py"
     assert metrics["most_depended_on"][0][1] == 2
 
@@ -57,9 +55,7 @@ def test_relative_import_resolution():
         absolute_path="/repo/pkg/sub/child.py",
         line_count=20,
         imports=[
-            # from .sibling import foo -> pkg/sub/sibling.py
             ImportInfo(module="sibling", names=["foo"], level=1, is_from=True, line_number=2),
-            # from ..parent_mod import bar -> pkg/parent_mod.py
             ImportInfo(module="parent_mod", names=["bar"], level=2, is_from=True, line_number=3),
         ],
     )

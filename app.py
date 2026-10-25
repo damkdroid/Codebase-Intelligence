@@ -17,7 +17,6 @@ from clustering import CodeClusterer
 from dependencies import build_dependency_graph, get_graph_metrics, render_graph_figure
 from ui_theme import get_theme_css, render_code_block, render_category_tag
 
-# Page configuration
 st.set_page_config(
     page_title="Codebase Intelligence",
     layout="wide",
@@ -41,7 +40,6 @@ def get_classifier() -> CodeClassifier:
 
 def init_session_state():
     """Initialize session state and query parameter theme persistence."""
-    # Theme persistence via query parameters or default to dark
     url_theme = st.query_params.get("theme", None)
     if "theme" not in st.session_state:
         st.session_state.theme = url_theme if url_theme in ("light", "dark") else "dark"
@@ -99,15 +97,12 @@ def run_scan(target_dir: str):
             all_functions.extend(pf.functions)
             all_classes.extend(pf.classes)
 
-        # Index search engine
         search_engine = CodeSearchEngine()
         search_engine.index(all_functions)
 
-        # Build dependency graph
         dep_graph = build_dependency_graph(parsed_files)
         graph_metrics = get_graph_metrics(dep_graph)
 
-        # Precompute classifications
         classifier = get_classifier()
         classification_rows = []
         for fn in all_functions:
@@ -123,7 +118,6 @@ def run_scan(target_dir: str):
             })
         classified_df = pd.DataFrame(classification_rows) if classification_rows else pd.DataFrame()
 
-        # Update session state
         st.session_state.scanned = True
         st.session_state.repo_path = str(path_obj)
         st.session_state.parsed_files = parsed_files
@@ -140,14 +134,10 @@ def run_scan(target_dir: str):
 def main():
     init_session_state()
 
-    # Apply centralized theme CSS
     active_theme = st.session_state.theme
     is_dark = (active_theme == "dark")
     st.markdown(get_theme_css(active_theme), unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # SIDEBAR: CONTROLS & THEME TOGGLE
-    # -------------------------------------------------------------------------
     st.sidebar.markdown("""
         <div style="padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--ui-border-subtle);">
             <div style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--ui-text-primary);">
@@ -159,7 +149,6 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    # Theme Toggle
     theme_col1, theme_col2 = st.sidebar.columns([1, 1])
     with theme_col1:
         st.caption("INTERFACE THEME")
@@ -210,9 +199,6 @@ def main():
     st.sidebar.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
     st.sidebar.caption("Static analysis only. Analyzed repository code is never executed.")
 
-    # -------------------------------------------------------------------------
-    # MAIN HEADER
-    # -------------------------------------------------------------------------
     repo_tag = Path(st.session_state.repo_path).name if st.session_state.scanned else "No repository loaded"
     display_html(f"""
         <div class="app-header-bar">
@@ -226,7 +212,6 @@ def main():
         </div>
     """)
 
-    # Empty State when no repository is scanned yet
     if not st.session_state.scanned:
         st.markdown("""
             <div class="ui-panel" style="padding: 24px;">
@@ -264,9 +249,6 @@ def main():
         """, unsafe_allow_html=True)
         return
 
-    # -------------------------------------------------------------------------
-    # MAIN NAVIGATION TABS (No emojis)
-    # -------------------------------------------------------------------------
     tab_overview, tab_search, tab_classify, tab_cluster, tab_deps = st.tabs([
         "Overview",
         "Code Search",
@@ -275,9 +257,6 @@ def main():
         "Dependency Graph",
     ])
 
-    # =========================================================================
-    # TAB 1: OVERVIEW
-    # =========================================================================
     with tab_overview:
         parsed_files: List[ParsedFile] = st.session_state.parsed_files
         functions: List[FunctionEntity] = st.session_state.functions
@@ -285,7 +264,6 @@ def main():
         total_lines = sum(pf.line_count for pf in parsed_files)
         error_files = [pf for pf in parsed_files if pf.error]
 
-        # Top Metric Tiles
         st.markdown(f"""
             <div class="metric-grid">
                 <div class="ui-metric-tile">
@@ -333,16 +311,12 @@ def main():
             })
         st.dataframe(pd.DataFrame(file_summary), use_container_width=True, hide_index=True)
 
-    # =========================================================================
-    # TAB 2: CODE SEARCH
-    # =========================================================================
     with tab_search:
         st.subheader("Natural-Language Code Search")
         st.caption(
             "Vector search over function names, parameter signatures, docstrings, and source code using TF-IDF and Cosine Similarity."
         )
 
-        # Quick query presets (Clean buttons without emojis)
         st.markdown("<small style='color: var(--ui-text-muted); font-weight: 600;'>QUICK SEARCH PRESETS:</small>", unsafe_allow_html=True)
         q1, q2, q3, q4 = st.columns(4)
         preset_query = None
@@ -390,7 +364,6 @@ def main():
                 for r in results:
                     score_pct = int(r.score * 100)
 
-                    # Result Card
                     header_title = f"#{r.rank} · {r.full_name}() — {score_pct}% relevance"
                     with st.expander(header_title, expanded=(r.rank == 1)):
                         meta_col1, meta_col2 = st.columns(2)
@@ -406,7 +379,6 @@ def main():
                                 </div>
                             """, unsafe_allow_html=True)
 
-                        # Obsidian-inspired code snippet with Pygments syntax highlighting
                         code_html = render_code_block(
                             source_code=r.source_code,
                             file_path=r.file_path,
@@ -417,9 +389,6 @@ def main():
                         )
                         display_html(code_html)
 
-    # =========================================================================
-    # TAB 3: CLASSIFICATION
-    # =========================================================================
     with tab_classify:
         st.subheader("Architectural Code Classification")
         st.caption(
@@ -451,7 +420,6 @@ def main():
 
             st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
 
-            # Function cards with restrained category tags
             for _, row in filtered_df.iterrows():
                 entity: FunctionEntity = row["Entity"]
                 conf_pct = int(row["Confidence"] * 100)
@@ -474,7 +442,6 @@ def main():
                         c_short = c_name.split()[0]
                         col.metric(c_short, f"{int(c_prob * 100)}%")
 
-                    # Pygments syntax highlighted source snippet
                     code_html = render_code_block(
                         source_code=entity.source_code,
                         file_path=row["File"],
@@ -489,9 +456,6 @@ def main():
         else:
             st.info("No functions available to classify.")
 
-    # =========================================================================
-    # TAB 4: CLUSTERING
-    # =========================================================================
     with tab_cluster:
         st.subheader("Topic Discovery & Code Clustering")
         st.caption(
@@ -540,9 +504,6 @@ def main():
         else:
             st.info("No functions available to cluster.")
 
-    # =========================================================================
-    # TAB 5: DEPENDENCY GRAPH
-    # =========================================================================
     with tab_deps:
         st.subheader("Internal Module Dependency Graph")
         st.caption(
@@ -553,7 +514,6 @@ def main():
         metrics = st.session_state.graph_metrics
 
         if dep_graph is not None and metrics is not None:
-            # Metric Tiles
             has_cycle = metrics["cycle_count"] > 0
             st.markdown(f"""
                 <div class="metric-grid">
@@ -579,7 +539,6 @@ def main():
             if metrics["cycles"]:
                 st.error(f"Circular import cycle detected: {metrics['cycles']}")
 
-            # Theme-aware Matplotlib network rendering
             fig = render_graph_figure(dep_graph, is_dark=is_dark)
             st.pyplot(fig)
             plt.close(fig)

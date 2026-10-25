@@ -1,4 +1,3 @@
-"""Application Configuration and Logging Utilities."""
 
 import os
 import logging
@@ -7,7 +6,6 @@ from typing import Dict, Any
 
 
 def load_settings() -> Dict[str, Any]:
-    """Load application configuration settings from environment variables."""
     return {
         "app_env": os.getenv("APP_ENV", "development"),
         "database_url": os.getenv("DATABASE_URL", "sqlite:///app.db"),
@@ -18,7 +16,6 @@ def load_settings() -> Dict[str, Any]:
 
 
 def setup_logger(name: str = "app") -> logging.Logger:
-    """Configure structured console logging handler for the application."""
     logger = logging.getLogger(name)
     if not logger.handlers:
         handler = logging.StreamHandler()
@@ -30,7 +27,6 @@ def setup_logger(name: str = "app") -> logging.Logger:
 
 
 def format_iso_timestamp(timestamp: datetime = None) -> str:
-    """Format a datetime instance into a clean ISO 8601 string."""
     if timestamp is None:
         timestamp = datetime.utcnow()
     return timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")

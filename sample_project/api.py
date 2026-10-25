@@ -1,4 +1,3 @@
-"""REST API Endpoints and HTTP Request Routing."""
 
 from typing import Dict, Any, List
 from sample_project.auth import authenticate_user, verify_jwt_token
@@ -7,13 +6,11 @@ from sample_project.database import DatabaseClient
 
 
 class ApiRouter:
-    """Mock HTTP REST router handling incoming requests and returning responses."""
 
     def __init__(self, db: DatabaseClient):
         self.db = db
 
     def handle_login_request(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """POST /api/v1/auth/login handler: authenticates user and returns token."""
         username = payload.get("username", "")
         password = payload.get("password", "")
         token = authenticate_user(self.db, username, password)
@@ -22,7 +19,6 @@ class ApiRouter:
         return {"status_code": 200, "token": token}
 
     def handle_checkout_request(self, auth_header: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """POST /api/v1/orders/checkout handler: verifies token and completes purchase."""
         if not auth_header or not auth_header.startswith("Bearer "):
             return {"status_code": 401, "error": "Missing or malformed Authorization header"}
 
@@ -37,7 +33,6 @@ class ApiRouter:
         return {"status_code": 201, "data": order_summary}
 
     def handle_get_profile(self, user_id: int) -> Dict[str, Any]:
-        """GET /api/v1/users/{id} handler: fetch serialized user profile."""
         rows = self.db.execute_query(
             "SELECT id, username, email, role FROM users WHERE id = ?", (user_id,)
         )

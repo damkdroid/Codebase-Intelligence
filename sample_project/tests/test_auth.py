@@ -1,10 +1,8 @@
-"""Tests for authentication logic."""
 
 from sample_project.auth import hash_password, verify_password, generate_jwt_token, verify_jwt_token
 
 
 def test_password_hashing_and_verification():
-    """Verify that hashed password matches and invalid password fails."""
     plain = "SuperSecurePassword123!"
     hashed = hash_password(plain)
     assert "$" in hashed
@@ -13,7 +11,6 @@ def test_password_hashing_and_verification():
 
 
 def test_jwt_token_generation_and_validation():
-    """Verify mock JWT creation and signature round-trip."""
     token = generate_jwt_token(user_id=42, username="testuser", role="admin")
     assert token is not None
     info = verify_jwt_token(token)

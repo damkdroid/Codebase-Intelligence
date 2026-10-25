@@ -42,7 +42,6 @@ def test_search_ranking():
     engine = CodeSearchEngine()
     engine.index([e1, e2, e3])
 
-    # Search for authentication password
     results = engine.search("how to verify user password hash")
     assert len(results) > 0
     top_match = results[0]
@@ -51,7 +50,6 @@ def test_search_ranking():
     assert top_match.line_start == 10
     assert top_match.score > 0.1
 
-    # Search for database
     db_results = engine.search("postgresql database connection pool")
     assert len(db_results) > 0
     assert db_results[0].entity.name == "connect_db"
@@ -62,11 +60,9 @@ def test_search_empty_queries_and_no_matches():
     e = make_entity("foo", "simple helper", "def foo(): pass")
     engine.index([e])
 
-    # Empty query
     assert engine.search("") == []
     assert engine.search("   ") == []
 
-    # Unrelated query that doesn't match vocabulary
     assert engine.search("supercalifragilisticexpialidocious") == []
 
 

@@ -18,7 +18,6 @@ def test_classifier_initialization_and_metadata():
 def test_classifier_predict_categories():
     classifier = CodeClassifier()
 
-    # 1. Authentication
     res_auth = classifier.predict(
         "def login_user(username, password):\n    token = jwt.encode({'user': username}, SECRET)"
     )
@@ -26,19 +25,16 @@ def test_classifier_predict_categories():
     assert 0.0 <= res_auth.confidence <= 1.0
     assert len(res_auth.probabilities) == 6
 
-    # 2. Database Operations
     res_db = classifier.predict(
         "def query_users(cursor):\n    cursor.execute('SELECT * FROM users WHERE status = ?', ('active',))\n    return cursor.fetchall()"
     )
     assert res_db.category == "Database Operations"
 
-    # 3. Testing
     res_test = classifier.predict(
         "def test_order_submission_status(mock_client):\n    res = mock_client.post('/orders')\n    assert res.status_code == 201"
     )
     assert res_test.category == "Testing"
 
-    # 4. Business Logic
     res_biz = classifier.predict(
         "def calculate_tiered_discount(subtotal: float, tier: str) -> float:\n    if tier == 'VIP': return subtotal * 0.8"
     )

@@ -37,7 +37,6 @@ def test_clustering_normal_case():
 
 
 def test_clustering_small_dataset_clamping():
-    # Only 2 entities, but k=5 requested
     entities = [
         make_entity("alpha", "utility format timestamp", "def alpha(): return time()"),
         make_entity("beta", "utility sanitize string", "def beta(): return clean()"),

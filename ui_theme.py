@@ -7,57 +7,46 @@ from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import HtmlFormatter
 
-# =============================================================================
-# 1. COLOR TOKENS
-# =============================================================================
 
 THEME_CONFIG: Dict[str, Dict[str, str]] = {
     "light": {
-        # Surfaces & Backgrounds
-        "bg_base": "#fbfbfa",          # Soft warm-neutral canvas
-        "bg_surface": "#ffffff",       # Card surface
-        "bg_elevated": "#f4f4f2",      # Inset / active area
-        "bg_hover": "#f0f0ed",         # Subtle hover
+        "bg_base": "#fbfbfa",
+        "bg_surface": "#ffffff",
+        "bg_elevated": "#f4f4f2",
+        "bg_hover": "#f0f0ed",
         
-        # Borders
-        "border_subtle": "#e5e5e2",    # Hairline component border
-        "border_strong": "#d4d4cf",    # Focused or primary border
+        "border_subtle": "#e5e5e2",
+        "border_strong": "#d4d4cf",
         
-        # Typography
-        "text_primary": "#1a1a1c",     # High-contrast charcoal (not pure black)
-        "text_secondary": "#52525b",   # Readable body & description text
-        "text_muted": "#71717a",       # Labels, timestamps, metadata
+        "text_primary": "#1a1a1c",
+        "text_secondary": "#52525b",
+        "text_muted": "#71717a",
         
-        # Brand & Accent
-        "accent": "#0969da",           # VS Code / GitHub engineering blue
+        "accent": "#0969da",
         "accent_hover": "#0550ae",
         "accent_subtle": "#eff6ff",
         "accent_border": "#bfdbfe",
         
-        # Code block specific
-        "code_bg": "#f6f6f4",          # Obsidian light code background
-        "code_header_bg": "#ebebe8",   # Header bar for code box
+        "code_bg": "#f6f6f4",
+        "code_header_bg": "#ebebe8",
         "code_border": "#e2e2dd",
         "code_lineno": "#9ca3af",
         "code_text": "#1f2328",
         
-        # Pygments token colors (Light mode)
-        "tok_keyword": "#cf222e",      # Crimson (def, class, return, import)
-        "tok_func": "#8250df",         # Obsidian purple (function defs)
-        "tok_class": "#0550ae",        # Deep blue (class names)
-        "tok_string": "#0a3069",       # Deep navy/teal (strings)
-        "tok_docstring": "#57606a",    # Muted italic (docstrings)
-        "tok_number": "#953800",       # Burnt orange (numbers)
-        "tok_comment": "#6e7781",      # Muted slate (comments)
-        "tok_builtin": "#116329",      # Forest green (builtins)
-        "tok_operator": "#24292f",     # Punctuation & operators
-        "tok_ident": "#1f2328",        # Variables & identifiers
+        "tok_keyword": "#cf222e",
+        "tok_func": "#8250df",
+        "tok_class": "#0550ae",
+        "tok_string": "#0a3069",
+        "tok_docstring": "#57606a",
+        "tok_number": "#953800",
+        "tok_comment": "#6e7781",
+        "tok_builtin": "#116329",
+        "tok_operator": "#24292f",
+        "tok_ident": "#1f2328",
         
-        # Query search highlight
         "query_hit_bg": "#fef08a",
         "query_hit_text": "#713f12",
         
-        # Status & alerts
         "status_success_bg": "#ecfdf5",
         "status_success_border": "#a7f3d0",
         "status_success_text": "#065f46",
@@ -66,51 +55,43 @@ THEME_CONFIG: Dict[str, Dict[str, str]] = {
         "status_error_text": "#991b1b",
     },
     "dark": {
-        # Surfaces & Backgrounds
-        "bg_base": "#18191c",          # Deep obsidian charcoal
-        "bg_surface": "#202124",       # Slightly elevated card surface
-        "bg_elevated": "#282a2e",      # Inset / active area
-        "bg_hover": "#2d3035",         # Subtle hover
+        "bg_base": "#18191c",
+        "bg_surface": "#202124",
+        "bg_elevated": "#282a2e",
+        "bg_hover": "#2d3035",
         
-        # Borders
-        "border_subtle": "#2e3035",    # Subtle border
-        "border_strong": "#3d4047",    # Emphasized border
+        "border_subtle": "#2e3035",
+        "border_strong": "#3d4047",
         
-        # Typography
-        "text_primary": "#e6e6e8",     # Off-white comfortable text
-        "text_secondary": "#a1a1aa",   # Readable secondary text
-        "text_muted": "#71717a",       # Labels, line numbers, metadata
+        "text_primary": "#e6e6e8",
+        "text_secondary": "#a1a1aa",
+        "text_muted": "#71717a",
         
-        # Brand & Accent
-        "accent": "#3b82f6",           # Vibrant clean blue
+        "accent": "#3b82f6",
         "accent_hover": "#60a5fa",
         "accent_subtle": "#172554",
         "accent_border": "#1e40af",
         
-        # Code block specific
-        "code_bg": "#121316",          # Deep Obsidian dark code canvas
-        "code_header_bg": "#1a1b1f",   # Header bar for code box
+        "code_bg": "#121316",
+        "code_header_bg": "#1a1b1f",
         "code_border": "#28292d",
         "code_lineno": "#52525b",
         "code_text": "#e4e4e7",
         
-        # Pygments token colors (Dark mode)
-        "tok_keyword": "#ff7b72",      # Soft coral (def, class, return, import)
-        "tok_func": "#d2a8ff",         # Lavender purple (function defs)
-        "tok_class": "#79c0ff",        # Sky blue (class names)
-        "tok_string": "#7ee787",       # Mint green (strings)
-        "tok_docstring": "#8b949e",    # Italic muted silver (docstrings)
-        "tok_number": "#ffa657",       # Warm amber (numbers)
-        "tok_comment": "#8b949e",      # Muted slate (comments)
-        "tok_builtin": "#ffa657",      # Amber/gold (builtins)
-        "tok_operator": "#c9d1d9",     # Operators
-        "tok_ident": "#e6edf3",        # Identifiers
+        "tok_keyword": "#ff7b72",
+        "tok_func": "#d2a8ff",
+        "tok_class": "#79c0ff",
+        "tok_string": "#7ee787",
+        "tok_docstring": "#8b949e",
+        "tok_number": "#ffa657",
+        "tok_comment": "#8b949e",
+        "tok_builtin": "#ffa657",
+        "tok_operator": "#c9d1d9",
+        "tok_ident": "#e6edf3",
         
-        # Query search highlight
         "query_hit_bg": "#854d0e",
         "query_hit_text": "#fef08a",
         
-        # Status & alerts
         "status_success_bg": "#064e3b",
         "status_success_border": "#047857",
         "status_success_text": "#a7f3d0",
@@ -120,7 +101,6 @@ THEME_CONFIG: Dict[str, Dict[str, str]] = {
     },
 }
 
-# Architectural category badge palettes (restrained, accessible)
 CATEGORY_STYLES: Dict[str, Dict[str, Dict[str, str]]] = {
     "light": {
         "Authentication": {"bg": "#f5f3ff", "border": "#ddd6fe", "text": "#6d28d9"},
@@ -141,9 +121,6 @@ CATEGORY_STYLES: Dict[str, Dict[str, Dict[str, str]]] = {
 }
 
 
-# =============================================================================
-# 2. GLOBAL CSS GENERATION
-# =============================================================================
 
 def get_theme_css(theme: str) -> str:
     """Generate complete CSS stylesheet matching active theme."""
@@ -532,9 +509,6 @@ def get_theme_css(theme: str) -> str:
 """
 
 
-# =============================================================================
-# 3. CODE RENDERING HELPERS (OBSIDIAN-INSPIRED)
-# =============================================================================
 
 def highlight_terms_in_html(html_str: str, query: Optional[str]) -> str:
     """Highlight matched query words inside HTML text nodes safely."""
@@ -547,7 +521,6 @@ def highlight_terms_in_html(html_str: str, query: Optional[str]) -> str:
 
     regex_pattern = re.compile(r"\b(" + "|".join(tokens) + r")\b", re.IGNORECASE)
 
-    # Replace only text outside of HTML tags (<...>)
     def replace_text_segment(match: re.Match) -> str:
         prefix, text, suffix = match.group(1), match.group(2), match.group(3)
         highlighted = regex_pattern.sub(r'<mark class="query-match">\1</mark>', text)
@@ -581,24 +554,20 @@ def render_code_block(
     if not clean_code:
         return ""
 
-    # Pygments nowrap gives tokenized HTML per line without collapsing <pre>
     formatter = HtmlFormatter(nowrap=True)
     try:
         raw_highlighted = highlight(clean_code, PythonLexer(), formatter)
     except Exception:
         raw_highlighted = html.escape(clean_code)
 
-    # Safely apply keyword highlighting if query provided
     final_highlighted = highlight_terms_in_html(raw_highlighted, query)
 
-    # Split lines cleanly to build individual line rows
     lines = final_highlighted.splitlines()
     start_num = max(1, line_start)
 
     rendered_line_divs = []
     for idx, line_content in enumerate(lines):
         line_num = start_num + idx
-        # Ensure empty lines preserve height with a non-breaking space
         content = line_content if line_content.strip() else "&nbsp;"
         rendered_line_divs.append(
             f'<div class="code-line">'
@@ -609,7 +578,6 @@ def render_code_block(
 
     code_lines_html = "\n".join(rendered_line_divs)
 
-    # Header label assembly
     location_parts = []
     if file_path:
         location_parts.append(html.escape(file_path))
@@ -634,9 +602,6 @@ def render_code_block(
 """
 
 
-# =============================================================================
-# 4. COMPONENT RENDERING HELPERS
-# =============================================================================
 
 def render_category_tag(category: str, confidence: Optional[float] = None, is_dark: bool = False) -> str:
     """Return an HTML tag with restrained category coloring and confidence score."""

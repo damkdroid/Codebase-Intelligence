@@ -78,7 +78,6 @@ class CodeClusterer:
         note = None
         effective_k = n_clusters
 
-        # Adjust k if sample count is smaller than requested clusters
         if n_samples < n_clusters:
             effective_k = max(1, n_samples)
             note = (
@@ -91,7 +90,6 @@ class CodeClusterer:
             X = self.vectorizer.fit_transform(corpus)
             feature_names = np.array(self.vectorizer.get_feature_names_out())
         except ValueError:
-            # Vocabulary empty (e.g., all empty docstrings and functions)
             return ClusteringOutcome(
                 groups=[
                     ClusterGroup(
@@ -105,7 +103,6 @@ class CodeClusterer:
                 note="Insufficient text vocabulary to perform meaningful feature extraction.",
             )
 
-        # Handle 1 cluster
         if effective_k == 1:
             mean_vector = np.asarray(X.mean(axis=0)).flatten()
             top_indices = mean_vector.argsort()[::-1][:top_n_terms]
@@ -129,7 +126,6 @@ class CodeClusterer:
         )
         labels = kmeans.fit_predict(X)
 
-        # Extract top terms from cluster centers
         cluster_terms: Dict[int, List[str]] = {}
         order_centroids = kmeans.cluster_centers_.argsort()[:, ::-1]
 
@@ -141,7 +137,6 @@ class CodeClusterer:
                 if idx < len(feature_names)
             ]
 
-        # Group entities
         buckets: Dict[int, List[FunctionEntity]] = {i: [] for i in range(effective_k)}
         for idx, label in enumerate(labels):
             buckets[int(label)].append(entities[idx])
@@ -156,7 +151,6 @@ class CodeClusterer:
                 )
             )
 
-        # Sort groups by size descending
         groups.sort(key=lambda g: g.size, reverse=True)
 
         return ClusteringOutcome(

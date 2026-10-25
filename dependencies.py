@@ -29,25 +29,21 @@ def build_module_lookup(parsed_files: List[ParsedFile]) -> Dict[str, str]:
         norm_path = normalize_rel_path(pf.file_path)
         path_obj = Path(norm_path)
 
-        # 1. Exact dotted path from root (e.g. foo/bar/baz.py -> foo.bar.baz)
         parts = list(path_obj.parts)
         if parts:
             if parts[-1].endswith(".py"):
                 parts[-1] = parts[-1][:-3]
             if parts[-1] == "__init__":
-                # foo/bar/__init__.py maps to foo.bar and foo/bar
                 pkg_dotted = ".".join(parts[:-1])
                 if pkg_dotted:
                     lookup[pkg_dotted] = norm_path
             dotted = ".".join(parts)
             lookup[dotted] = norm_path
 
-        # Track stem for potential fallback (e.g. 'auth' -> 'sample_project/auth.py')
         stem = path_obj.stem
         if stem != "__init__":
             stem_counts.setdefault(stem, []).append(norm_path)
 
-    # Add unambiguous stem lookups (e.g., if only one 'auth.py' exists in repo)
     for stem, paths in stem_counts.items():
         if len(paths) == 1 and stem not in lookup:
             lookup[stem] = paths[0]
@@ -64,10 +60,9 @@ def resolve_relative_import(
     """Resolve relative import like `from .db import query` or `from ..config import cfg`."""
     current_parts = list(Path(normalize_rel_path(current_file_path)).parent.parts)
 
-    # level 1 = current directory, level 2 = parent directory, etc.
     up_steps = level - 1
     if up_steps > len(current_parts):
-        return None  # Escapes repo root
+        return None
 
     base_parts = current_parts[: len(current_parts) - up_steps] if up_steps > 0 else current_parts
 
@@ -79,7 +74,6 @@ def resolve_relative_import(
     if candidate_dotted in module_lookup:
         return module_lookup[candidate_dotted]
 
-    # Try matching file directly
     candidate_path = "/".join(target_tokens) + ".py"
     for path in module_lookup.values():
         if path == candidate_path:
@@ -96,7 +90,6 @@ def resolve_import(
     """Resolve an ImportInfo to a list of matching internal target file paths."""
     resolved_targets: Set[str] = set()
 
-    # Case 1: Relative import (level > 0)
     if imp.level > 0:
         target = resolve_relative_import(
             current_file_path, imp.module, imp.level, module_lookup
@@ -104,7 +97,6 @@ def resolve_import(
         if target:
             resolved_targets.add(target)
         else:
-            # Maybe the imported name itself is a submodule (e.g. `from . import auth`)
             for name in imp.names:
                 sub_target = resolve_relative_import(
                     current_file_path, name, imp.level, module_lookup
@@ -113,7 +105,6 @@ def resolve_import(
                     resolved_targets.add(sub_target)
         return list(resolved_targets)
 
-    # Case 2: Absolute import (from foo.bar import baz OR import foo.bar)
     candidates: List[str] = []
     if imp.is_from and imp.module:
         candidates.append(imp.module)
@@ -124,12 +115,10 @@ def resolve_import(
             candidates.append(name)
 
     for cand in candidates:
-        # Check direct lookup
         if cand in module_lookup:
             resolved_targets.add(module_lookup[cand])
             continue
 
-        # Check prefix match (e.g., candidate is `sample_project.auth.verify_password`)
         tokens = cand.split(".")
         found = False
         for i in range(len(tokens), 0, -1):
@@ -140,7 +129,6 @@ def resolve_import(
                 break
 
         if not found:
-            # Check suffix match (e.g., candidate is `sample_project.config` when scanned directly inside `sample_project`)
             for i in range(1, len(tokens)):
                 sub = ".".join(tokens[i:])
                 if sub in module_lookup:
@@ -159,7 +147,6 @@ def build_dependency_graph(parsed_files: List[ParsedFile]) -> nx.DiGraph:
     graph = nx.DiGraph()
     module_lookup = build_module_lookup(parsed_files)
 
-    # Add all files as nodes
     for pf in parsed_files:
         norm = normalize_rel_path(pf.file_path)
         graph.add_node(
@@ -170,7 +157,6 @@ def build_dependency_graph(parsed_files: List[ParsedFile]) -> nx.DiGraph:
             has_error=bool(pf.error),
         )
 
-    # Add edges
     for pf in parsed_files:
         source_path = normalize_rel_path(pf.file_path)
         for imp in pf.imports:
@@ -190,15 +176,12 @@ def get_graph_metrics(graph: nx.DiGraph) -> Dict[str, Any]:
     num_nodes = graph.number_of_nodes()
     num_edges = graph.number_of_edges()
 
-    # In-degree: how many other files import this file
     in_degrees = dict(graph.in_degree())
-    # Out-degree: how many files this file imports
     out_degrees = dict(graph.out_degree())
 
     most_depended_on = sorted(in_degrees.items(), key=lambda x: x[1], reverse=True)
     most_dependencies = sorted(out_degrees.items(), key=lambda x: x[1], reverse=True)
 
-    # Cycles
     try:
         cycles = list(nx.simple_cycles(graph))
     except Exception:
@@ -240,7 +223,6 @@ def render_graph_figure(
         ax.axis("off")
         return fig
 
-    # Layout: spring layout or circular
     if graph.number_of_nodes() <= 2:
         pos = nx.spring_layout(graph, seed=42)
     else:
@@ -249,7 +231,6 @@ def render_graph_figure(
         except Exception:
             pos = nx.spring_layout(graph, k=1.3, seed=42)
 
-    # Identify nodes in cycles
     try:
         cycle_nodes = set().union(*nx.simple_cycles(graph))
     except Exception:
@@ -258,15 +239,14 @@ def render_graph_figure(
     node_colors = []
     for node in graph.nodes:
         if node in cycle_nodes:
-            node_colors.append("#ef4444")  # Red for circular dependency
+            node_colors.append("#ef4444")
         elif graph.in_degree(node) >= 2:
-            node_colors.append("#3b82f6" if is_dark else "#0969da")  # Blue for core utility
+            node_colors.append("#3b82f6" if is_dark else "#0969da")
         elif graph.out_degree(node) >= 2:
-            node_colors.append("#a855f7" if is_dark else "#7c3aed")  # Purple for high consumer
+            node_colors.append("#a855f7" if is_dark else "#7c3aed")
         else:
-            node_colors.append("#10b981" if is_dark else "#059669")  # Emerald green standard
+            node_colors.append("#10b981" if is_dark else "#059669")
 
-    # Draw nodes with border
     nx.draw_networkx_nodes(
         graph,
         pos,
@@ -278,7 +258,6 @@ def render_graph_figure(
         linewidths=2.0,
     )
 
-    # Draw curved edges with prominent arrows
     nx.draw_networkx_edges(
         graph,
         pos,
@@ -291,7 +270,6 @@ def render_graph_figure(
         alpha=0.8,
     )
 
-    # Node labels: shorten relative paths for readability (e.g., path.stem or last 2 parts)
     labels = {}
     for node in graph.nodes:
         parts = Path(node).parts
@@ -311,7 +289,6 @@ def render_graph_figure(
         font_color="#ffffff",
     )
 
-    # Add legend
     import matplotlib.patches as mpatches
     core_color = "#3b82f6" if is_dark else "#0969da"
     cons_color = "#a855f7" if is_dark else "#7c3aed"

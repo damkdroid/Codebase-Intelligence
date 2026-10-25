@@ -45,7 +45,7 @@ class CodeClassifier:
             ngram_range=(1, 2),
             stop_words="english",
             max_features=3000,
-            token_pattern=r"(?u)\b[a-zA-Z_][a-zA-Z0-9_]+\b",  # Capture code tokens
+            token_pattern=r"(?u)\b[a-zA-Z_][a-zA-Z0-9_]+\b",
         )
         self.model = LogisticRegression(
             C=1.0,
@@ -93,7 +93,6 @@ class CodeClassifier:
 
         cleaned = code_text.strip()
         if not cleaned:
-            # Handle empty input safely
             uniform_prob = 1.0 / len(CATEGORIES)
             return ClassificationResult(
                 category="Configuration/Utilities",

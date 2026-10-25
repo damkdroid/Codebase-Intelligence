@@ -64,7 +64,6 @@ class CodeSearchEngine:
             return
 
         corpus = [entity.searchable_text for entity in entities]
-        # Ensure at least some non-empty text exists
         non_empty = [c for c in corpus if c.strip()]
         if not non_empty:
             self.tfidf_matrix = None
@@ -95,13 +94,10 @@ class CodeSearchEngine:
         except Exception:
             return []
 
-        # If query vector has zero magnitude (none of the tokens match vocab)
         if query_vec.nnz == 0:
             return []
 
         similarities = cosine_similarity(query_vec, self.tfidf_matrix).flatten()
-
-        # Sort indices by score descending
         sorted_indices = np.argsort(similarities)[::-1]
 
         results: List[SearchResult] = []

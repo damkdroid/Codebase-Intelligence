@@ -18,7 +18,6 @@ def test_scanner_finds_sample_project_files():
 
 
 def test_scanner_excludes_virtualenvs_and_git(tmp_path):
-    # Setup temporary directory structure with git and venv
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "main.py").write_text("print('hello')")
 

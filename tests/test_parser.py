@@ -42,7 +42,6 @@ def top_level_func(a, b):
     assert compute_fn.line_start == 7
     assert "def compute" in compute_fn.source_code
 
-    # Verify imports
     assert len(result.imports) == 2
     imp_math = next(i for i in result.imports if i.module == "math")
     assert imp_math.is_from is True

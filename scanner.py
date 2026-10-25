@@ -2,7 +2,6 @@
 from pathlib import Path
 from typing import Iterable, Set, List, Optional
 
-# Standard directories to exclude during scanning
 DEFAULT_EXCLUDED_DIRS: Set[str] = {
     ".git",
     ".svn",
