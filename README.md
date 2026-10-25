@@ -2,7 +2,6 @@
 
 A zero-cloud, static code intelligence and semantic analysis platform for Python repositories. Built with **Python 3.12**, **AST grammar parsing**, **scikit-learn**, **NetworkX**, and **Streamlit**.
 
-Designed with an Obsidian- and VS Code-inspired interface featuring complete Light and Dark theme support, restrained typography, and Pygments syntax highlighting.
 
 ---
 
@@ -40,17 +39,6 @@ Designed with an Obsidian- and VS Code-inspired interface featuring complete Lig
    - Resolves both absolute and relative imports.
    - Computes in-degree (core utilities), out-degree (high consumers), and circular dependency cycle detection.
    - Theme-aware NetworkX visualization adapting to active Light or Dark theme.
-
----
-
-## User Interface and Theme System
-
-The user interface follows Obsidian and VS Code design principles:
-- **Light & Dark Theme Toggle**: Prominent theme selector in the sidebar persisting across Streamlit reruns and URL query parameters (`?theme=light` or `?theme=dark`).
-  - **Light Mode**: Warm neutral canvas (`#fbfbfa`), clean borders, high-contrast dark text, and subtle card surfaces.
-  - **Dark Mode**: Deep obsidian slate (`#18191c`), dark card surfaces (`#202124`), and soft off-white text.
-- **Pygments Syntax Highlighting**: Python code snippets feature token-level syntax highlighting (keywords, functions, classes, strings, docstrings, numbers, comments) with inline line numbers, file path headers, and search term highlights.
-- **No Decorative Emojis**: Clean text labels, monospace tags, and professional typography using system font stacks.
 
 ---
 
