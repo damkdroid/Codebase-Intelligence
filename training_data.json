@@ -1,0 +1,222 @@
+[
+  {
+    "category": "Authentication",
+    "text": "def login(username, password):\n    user = find_user(username)\n    if not user or not verify_password(password, user.hashed_password):\n        raise AuthenticationError('Invalid credentials')\n    return generate_jwt_token(user.id, roles=user.roles)"
+  },
+  {
+    "category": "Authentication",
+    "text": "def verify_password(plain_password: str, hashed_password: str) -> bool:\n    \"\"\"Check provided password against salted argon2 or bcrypt hash.\"\"\"\n    salt, stored_hash = hashed_password.split('$')\n    return hashlib.sha256((plain_password + salt).encode()).hexdigest() == stored_hash"
+  },
+  {
+    "category": "Authentication",
+    "text": "def generate_jwt_token(user_id: str, secret_key: str, expires_in: int = 3600) -> str:\n    \"\"\"Create signed JWT token with expiration timestamp.\"\"\"\n    payload = {'sub': user_id, 'exp': time.time() + expires_in, 'iat': time.time()}\n    return jwt.encode(payload, secret_key, algorithm='HS256')"
+  },
+  {
+    "category": "Authentication",
+    "text": "def decode_and_verify_token(token: str, secret_key: str) -> dict:\n    try:\n        payload = jwt.decode(token, secret_key, algorithms=['HS256'])\n        return payload\n    except jwt.ExpiredSignatureError:\n        raise TokenExpiredError('JWT signature has expired')\n    except jwt.InvalidTokenError:\n        raise InvalidTokenError('Malformed or invalid auth token')"
+  },
+  {
+    "category": "Authentication",
+    "text": "def require_permissions(required_permission: str):\n    def decorator(fn):\n        def wrapper(*args, **kwargs):\n            user = get_current_user()\n            if required_permission not in user.permissions:\n                raise PermissionDenied('Access forbidden: insufficient role permissions')\n            return fn(*args, **kwargs)\n        return wrapper\n    return decorator"
+  },
+  {
+    "category": "Authentication",
+    "text": "def hash_password(password: str) -> str:\n    salt = os.urandom(16).hex()\n    hashed = hashlib.sha256((password + salt).encode()).hexdigest()\n    return f'{salt}${hashed}'"
+  },
+  {
+    "category": "Authentication",
+    "text": "def revoke_refresh_token(user_id: str, refresh_token: str):\n    \"\"\"Add refresh token to blacklist in session store.\"\"\"\n    session_cache.delete(f'refresh:{user_id}')\n    blacklist_token(refresh_token)"
+  },
+  {
+    "category": "Authentication",
+    "text": "def authenticate_user_credentials(email, password):\n    account = user_repo.get_by_email(email)\n    if not account or not check_password_hash(account.password_hash, password):\n        return None\n    return account"
+  },
+  {
+    "category": "Authentication",
+    "text": "def create_password_reset_token(user_email: str) -> str:\n    token = secrets.token_urlsafe(32)\n    cache.set(f'reset:{token}', user_email, timeout=900)\n    return token"
+  },
+  {
+    "category": "Authentication",
+    "text": "def validate_session(session_id: str, user_store: dict) -> bool:\n    session = user_store.get(session_id)\n    if not session or session.expired:\n        return False\n    return True"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def get_db_connection(connection_string: str):\n    \"\"\"Initialize connection pool to PostgreSQL or SQLite database.\"\"\"\n    engine = create_engine(connection_string, pool_size=10, max_overflow=20)\n    return sessionmaker(bind=engine)()"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def execute_query(sql_statement: str, params: tuple = ()):\n    cursor = db.cursor()\n    cursor.execute(sql_statement, params)\n    results = cursor.fetchall()\n    cursor.close()\n    return results"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def insert_user_record(session, username: str, email: str, role: str):\n    \"\"\"Insert new record into users table and commit transaction.\"\"\"\n    record = User(username=username, email=email, role=role)\n    session.add(record)\n    session.commit()\n    return record.id"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def fetch_user_by_id(db_session, user_id: int):\n    return db_session.query(UserModel).filter(UserModel.id == user_id).first()"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def rollback_transaction(session):\n    try:\n        session.commit()\n    except Exception as exc:\n        session.rollback()\n        logger.error(f'Database error occurred: {exc}')\n        raise"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def run_schema_migration(db_url: str, migration_script: str):\n    with sqlite3.connect(db_url) as conn:\n        cursor = conn.cursor()\n        cursor.executescript(migration_script)\n        conn.commit()"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def bulk_insert_records(table_name: str, rows: list[dict]):\n    query = f'INSERT INTO {table_name} ({columns}) VALUES ({placeholders})'\n    with db_pool.acquire() as conn:\n        conn.executemany(query, rows)"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def update_user_status(db_conn, user_id: int, new_status: str):\n    cur = db_conn.cursor()\n    cur.execute('UPDATE users SET status = ? WHERE id = ?', (new_status, user_id))\n    db_conn.commit()"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def delete_records_older_than(session, cutoff_timestamp):\n    deleted_count = session.query(LogEntry).filter(LogEntry.created_at < cutoff_timestamp).delete()\n    session.commit()\n    return deleted_count"
+  },
+  {
+    "category": "Database Operations",
+    "text": "def find_active_subscriptions(session):\n    return session.query(Subscription).filter_by(is_active=True).all()"
+  },
+  {
+    "category": "API/Communication",
+    "text": "@app.get('/api/v1/users/{user_id}')\ndef get_user_profile(user_id: int):\n    \"\"\"Fetch user data and return serialized JSON response.\"\"\"\n    user = fetch_user(user_id)\n    if not user:\n        raise HTTPException(status_code=404, detail='User not found')\n    return {'status': 'success', 'data': user.dict()}"
+  },
+  {
+    "category": "API/Communication",
+    "text": "@app.post('/api/v1/orders')\ndef create_order_endpoint(request_body: OrderRequest):\n    \"\"\"REST API handler for placing customer orders.\"\"\"\n    order_id = service.create_order(request_body.items)\n    return Response(status_code=201, content=json.dumps({'order_id': order_id}))"
+  },
+  {
+    "category": "API/Communication",
+    "text": "def send_webhook_notification(webhook_url: str, event_type: str, payload: dict):\n    headers = {'Content-Type': 'application/json', 'User-Agent': 'WebhookClient/1.0'}\n    response = requests.post(webhook_url, json={'event': event_type, 'data': payload}, headers=headers, timeout=5.0)\n    response.raise_for_status()\n    return response.json()"
+  },
+  {
+    "category": "API/Communication",
+    "text": "def call_external_payment_gateway(api_key: str, amount: float, currency: str):\n    endpoint = 'https://api.stripe.com/v1/charges'\n    resp = requests.post(endpoint, auth=(api_key, ''), data={'amount': int(amount * 100), 'currency': currency})\n    return resp.json()"
+  },
+  {
+    "category": "API/Communication",
+    "text": "@router.delete('/items/{item_id}')\nasync def delete_item_route(item_id: str):\n    success = await item_store.delete(item_id)\n    if not success:\n        raise HTTPException(status_code=404, detail='Item not found')\n    return {'message': 'Item deleted successfully'}"
+  },
+  {
+    "category": "API/Communication",
+    "text": "def broadcast_websocket_message(active_connections: list, message: dict):\n    for ws in active_connections:\n        ws.send_text(json.dumps(message))"
+  },
+  {
+    "category": "API/Communication",
+    "text": "def http_get_request(url: str, params: dict = None, timeout: int = 10):\n    \"\"\"Send HTTP GET request and parse response JSON.\"\"\"\n    resp = requests.get(url, params=params, timeout=timeout)\n    resp.raise_for_status()\n    return resp.json()"
+  },
+  {
+    "category": "API/Communication",
+    "text": "@app.middleware('http')\nasync def add_cors_headers(request, call_next):\n    response = await call_next(request)\n    response.headers['Access-Control-Allow-Origin'] = '*'\n    return response"
+  },
+  {
+    "category": "API/Communication",
+    "text": "def post_slack_alert(channel_webhook: str, alert_text: str):\n    payload = {'text': alert_text, 'username': 'AlertBot'}\n    requests.post(channel_webhook, json=payload)"
+  },
+  {
+    "category": "Business Logic",
+    "text": "def calculate_order_total(items: list[dict], discount_code: str = None) -> float:\n    \"\"\"Compute total order amount applying discounts, tiered pricing, and shipping fees.\"\"\"\n    subtotal = sum(item['price'] * item['quantity'] for item in items)\n    discount = get_discount_percentage(discount_code) if discount_code else 0.0\n    taxable_amount = subtotal * (1 - discount)\n    tax = taxable_amount * 0.0825\n    return round(taxable_amount + tax, 2)"
+  },
+  {
+    "category": "Business Logic",
+    "text": "def compute_employee_payroll(hours_worked: float, hourly_rate: float, overtime_rate: float = 1.5) -> float:\n    if hours_worked <= 40:\n        return hours_worked * hourly_rate\n    overtime_hours = hours_worked - 40\n    return (40 * hourly_rate) + (overtime_hours * hourly_rate * overtime_rate)"
+  },
+  {
+    "category": "Business Logic",
+    "text": "def apply_loyalty_rewards(customer_tier: str, purchase_amount: float) -> tuple[float, int]:\n    \"\"\"Determine cash discount and loyalty points earned based on membership tier.\"\"\"\n    multipliers = {'bronze': 1.0, 'silver': 1.25, 'gold': 1.5, 'platinum': 2.0}\n    multiplier = multipliers.get(customer_tier.lower(), 1.0)\n    points_earned = int(purchase_amount * multiplier * 10)\n    discount = 0.05 * purchase_amount if customer_tier == 'platinum' else 0.0\n    return discount, points_earned"
+  },
+  {
+    "category": "Business Logic",
+    "text": "def validate_cart_inventory_availability(cart_items: list, inventory_stock: dict) -> list[str]:\n    out_of_stock = []\n    for item in cart_items:\n        sku = item['sku']\n        qty = item['quantity']\n        if inventory_stock.get(sku, 0) < qty:\n            out_of_stock.append(sku)\n    return out_of_stock"
+  },
+  {
+    "category": "Business Logic",
+    "text": "def calculate_loan_amortization(principal: float, annual_interest_rate: float, months: int) -> float:\n    monthly_rate = annual_interest_rate / 12 / 100\n    if monthly_rate == 0:\n        return principal / months\n    return principal * (monthly_rate * (1 + monthly_rate) ** months) / ((1 + monthly_rate) ** months - 1)"
+  },
+  {
+    "category": "Business Logic",
+    "text": "def process_subscription_renewal(subscription, user_wallet):\n    if user_wallet.balance < subscription.renewal_price:\n        subscription.status = 'past_due'\n        return False\n    user_wallet.deduct(subscription.renewal_price)\n    subscription.extend_period(30)\n    return True"
+  },
+  {
+    "category": "Business Logic",
+    "text": "def apply_volume_pricing(quantity: int, unit_price: float) -> float:\n    if quantity >= 100:\n        return quantity * unit_price * 0.8\n    elif quantity >= 20:\n        return quantity * unit_price * 0.9\n    return quantity * unit_price"
+  },
+  {
+    "category": "Business Logic",
+    "text": "def calculate_credit_score_risk(credit_history_years: int, debt_to_income: float, missed_payments: int) -> str:\n    if missed_payments > 2 or debt_to_income > 0.5:\n        return 'HIGH_RISK'\n    if credit_history_years > 5 and debt_to_income < 0.3:\n        return 'LOW_RISK'\n    return 'MEDIUM_RISK'"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def load_config_from_env(prefix: str = 'APP_') -> dict:\n    \"\"\"Read environment variables and parse configuration settings.\"\"\"\n    config = {}\n    for key, value in os.environ.items():\n        if key.startswith(prefix):\n            clean_key = key[len(prefix):].lower()\n            config[clean_key] = value\n    return config"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def parse_yaml_file(filepath: str) -> dict:\n    \"\"\"Load and parse configuration YAML file.\"\"\"\n    with open(filepath, 'r', encoding='utf-8') as f:\n        return yaml.safe_load(f) or {}"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def setup_logging(log_level: str = 'INFO', log_file: str = None):\n    \"\"\"Configure standard logging handlers and formatting.\"\"\"\n    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')\n    handler = logging.FileHandler(log_file) if log_file else logging.StreamHandler()\n    handler.setFormatter(formatter)\n    logger = logging.getLogger()\n    logger.setLevel(log_level)\n    logger.addHandler(handler)"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def format_iso_timestamp(dt: datetime = None) -> str:\n    \"\"\"Format timestamp into ISO 8601 string.\"\"\"\n    if dt is None:\n        dt = datetime.utcnow()\n    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def sanitize_filename(filename: str) -> str:\n    \"\"\"Strip illegal characters from filename.\"\"\"\n    return re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def get_environment_bool(key: str, default: bool = False) -> bool:\n    val = os.getenv(key)\n    if val is None:\n        return default\n    return val.strip().lower() in ('true', '1', 'yes', 'on')"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def deep_merge_dicts(dict_a: dict, dict_b: dict) -> dict:\n    result = dict_a.copy()\n    for k, v in dict_b.items():\n        if k in result and isinstance(result[k], dict) and isinstance(v, dict):\n            result[k] = deep_merge_dicts(result[k], v)\n        else:\n            result[k] = v\n    return result"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def human_readable_bytes(num_bytes: int) -> str:\n    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:\n        if abs(num_bytes) < 1024.0:\n            return f'{num_bytes:3.1f} {unit}'\n        num_bytes /= 1024.0\n    return f'{num_bytes:.1f} PB'"
+  },
+  {
+    "category": "Configuration/Utilities",
+    "text": "def retry_with_exponential_backoff(max_attempts=3, base_delay=1.0):\n    def decorator(func):\n        def wrapper(*args, **kwargs):\n            delay = base_delay\n            for attempt in range(max_attempts):\n                try:\n                    return func(*args, **kwargs)\n                except Exception:\n                    if attempt == max_attempts - 1:\n                        raise\n                    time.sleep(delay)\n                    delay *= 2\n        return wrapper\n    return decorator"
+  },
+  {
+    "category": "Testing",
+    "text": "def test_calculate_order_total_with_discount():\n    items = [{'price': 100.0, 'quantity': 1}]\n    total = calculate_order_total(items, discount_code='SAVE20')\n    assert total == 86.60"
+  },
+  {
+    "category": "Testing",
+    "text": "@pytest.fixture\ndef mock_db_session():\n    \"\"\"Pytest fixture creating an in-memory SQLite database session.\"\"\"\n    engine = create_engine('sqlite:///:memory:')\n    Base.metadata.create_all(engine)\n    session = sessionmaker(bind=engine)()\n    yield session\n    session.close()"
+  },
+  {
+    "category": "Testing",
+    "text": "def test_user_authentication_success(client, test_user):\n    response = client.post('/api/login', json={'username': 'alice', 'password': 'secretPassword123'})\n    assert response.status_code == 200\n    assert 'token' in response.json()"
+  },
+  {
+    "category": "Testing",
+    "text": "def test_verify_password_invalid_hash():\n    is_valid = verify_password('wrong_pw', 'salted$hashvalue123')\n    assert is_valid is False"
+  },
+  {
+    "category": "Testing",
+    "text": "def test_api_404_when_user_not_found(client, mocker):\n    mocker.patch('service.get_user', return_value=None)\n    res = client.get('/users/9999')\n    assert res.status_code == 404\n    assert res.json()['detail'] == 'User not found'"
+  },
+  {
+    "category": "Testing",
+    "text": "def test_database_rollback_on_integrity_error(mock_db_session):\n    with pytest.raises(IntegrityError):\n        insert_duplicate_record(mock_db_session)\n    assert mock_db_session.is_active"
+  },
+  {
+    "category": "Testing",
+    "text": "def test_format_iso_timestamp_output():\n    fixed_time = datetime(2025, 1, 1, 12, 0, 0)\n    result = format_iso_timestamp(fixed_time)\n    assert result == '2025-01-01T12:00:00Z'"
+  },
+  {
+    "category": "Testing",
+    "text": "def test_empty_cart_inventory_validation():\n    result = validate_cart_inventory_availability([], {})\n    assert result == []"
+  },
+  {
+    "category": "Testing",
+    "text": "def test_unauthorized_access_raises_permission_denied():\n    with pytest.raises(PermissionDenied):\n        protected_admin_endpoint(user_role='guest')"
+  }
+]
