@@ -1,4 +1,4 @@
-
+# app.py
 
 from __future__ import annotations
 import os
@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -14,21 +15,36 @@ from parser import parse_repository, ParsedFile, FunctionEntity, ClassInfo
 from search import CodeSearchEngine
 from classifier import CodeClassifier, CATEGORIES
 from clustering import CodeClusterer
-from dependencies import build_dependency_graph, get_graph_metrics, render_graph_figure
-from ui_theme import get_theme_css, render_code_block, render_category_tag
+import importlib
+import dependencies
+importlib.reload(dependencies)
+from dependencies import (
+    build_dependency_graph,
+    get_graph_metrics,
+    render_graph_figure,
+    render_interactive_graph_html,
+)
+
+import ui_theme
+importlib.reload(ui_theme)
+from ui_theme import (
+    get_theme_css,
+    render_code_block,
+    render_category_tag,
+    render_probability_bars,
+    get_svg_icon,
+)
 
 st.set_page_config(
     page_title="Codebase Intelligence",
+    page_icon="◈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 
 def display_html(html_str: str):
-    if hasattr(st, "html"):
-        st.html(html_str)
-    else:
-        st.markdown(html_str, unsafe_allow_html=True)
+    st.markdown(html_str, unsafe_allow_html=True)
 
 
 @st.cache_resource(show_spinner=False)
@@ -74,7 +90,7 @@ def run_scan(target_dir: str):
         st.sidebar.error(f"Path is not a directory: {path_obj}")
         return
 
-    with st.spinner("Analyzing codebase and extracting AST index..."):
+    with st.spinner("Analyzing repository AST & generating feature index..."):
         try:
             discovered_files = scan_python_files(path_obj)
         except Exception as exc:
@@ -134,46 +150,56 @@ def main():
     is_dark = (active_theme == "dark")
     st.markdown(get_theme_css(active_theme), unsafe_allow_html=True)
 
-    st.sidebar.markdown("""
-        <div style="padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--ui-border-subtle);">
-            <div style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--ui-text-primary);">
-                Codebase Intelligence
+    # Sidebar Header
+    st.sidebar.markdown(f"""
+        <div style="padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--ui-border-subtle);">
+            <div style="display: flex; align-items: center; gap: 9px;">
+                <span class="app-logo-badge">
+                    {get_svg_icon("logo", size=16, color="#ffffff")}
+                </span>
+                <span style="font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: var(--ui-text-primary);">
+                    Codebase Intelligence
+                </span>
             </div>
-            <div style="font-size: 11px; color: var(--ui-text-muted); margin-top: 2px;">
-                Static AST & Semantic Code Search
+            <div style="font-size: 11.5px; color: var(--ui-text-muted); margin-top: 5px;">
+                Static AST Analysis & Semantic Intelligence
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    theme_col1, theme_col2 = st.sidebar.columns([1, 1])
-    with theme_col1:
-        st.caption("INTERFACE THEME")
-    with theme_col2:
-        new_theme = st.selectbox(
-            "Theme",
-            options=["dark", "light"],
-            index=0 if is_dark else 1,
-            label_visibility="collapsed",
-            key="theme_selector",
-        )
-        if new_theme != active_theme:
-            st.session_state.theme = new_theme
-            st.query_params["theme"] = new_theme
-            st.rerun()
+    # Sleek Segmented Theme Switcher
+    st.sidebar.caption("INTERFACE THEME")
+    theme_options = ["Dark Mode", "Light Mode"]
+    current_theme_idx = 0 if is_dark else 1
+    selected_theme_label = st.sidebar.radio(
+        "Theme",
+        options=theme_options,
+        index=current_theme_idx,
+        horizontal=True,
+        label_visibility="collapsed",
+        key="theme_radio",
+    )
+    desired_theme = "dark" if "Dark" in selected_theme_label else "light"
+    if desired_theme != active_theme:
+        st.session_state.theme = desired_theme
+        st.query_params["theme"] = desired_theme
+        st.rerun()
 
-    st.sidebar.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
 
     default_sample = str((Path(__file__).parent / "sample_project").resolve())
 
+    st.sidebar.caption("TARGET CODEBASE")
     repo_input = st.sidebar.text_input(
         "Repository Directory",
         value=st.session_state.repo_path or default_sample,
         help="Local directory path containing the Python codebase to analyze.",
+        label_visibility="collapsed",
     )
 
     btn_col1, btn_col2 = st.sidebar.columns([1, 1])
     with btn_col1:
-        if st.button("Scan Repository", type="primary", use_container_width=True):
+        if st.button("Scan Repo", type="primary", use_container_width=True):
             run_scan(repo_input)
     with btn_col2:
         if st.button("Load Sample", use_container_width=True):
@@ -182,119 +208,189 @@ def main():
     if st.session_state.scanned:
         repo_name = Path(st.session_state.repo_path).name or "Repository"
         st.sidebar.markdown(f"""
-            <div style="margin-top: 12px; padding: 6px 10px; border-radius: 4px; background-color: var(--ui-bg-elevated); border: 1px solid var(--ui-border-subtle);">
-                <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--ui-text-muted);">Loaded:</span>
-                <span style="font-family: 'JetBrains Mono', Consolas, monospace; font-size: 11.5px; font-weight: 600; color: var(--ui-text-primary); margin-left: 4px;">{repo_name}</span>
+            <div style="margin-top: 14px; padding: 12px 14px; border-radius: 8px; background-color: var(--ui-bg-elevated); border: 1px solid var(--ui-border-strong);">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--ui-text-muted); letter-spacing: 0.05em;">ACTIVE CODEBASE</div>
+                <div style="font-family: 'JetBrains Mono', Consolas, monospace; font-size: 13.5px; font-weight: 700; color: var(--ui-text-primary); margin-top: 2px;">
+                    {repo_name}
+                </div>
+                <div style="font-size: 11.5px; color: var(--ui-text-secondary); margin-top: 4px;">
+                    {len(st.session_state.parsed_files)} Python files · {len(st.session_state.functions)} functions
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
     with st.sidebar.expander("Excluded Directories", expanded=False):
-        st.caption("Directories bypassed during scanning:")
+        st.caption("Bypassed during scanner traversal:")
         st.code("\n".join(sorted(DEFAULT_EXCLUDED_DIRS)), language="text")
 
-    st.sidebar.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-    st.sidebar.caption("Static analysis only. Analyzed repository code is never executed.")
+    st.sidebar.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
+    st.sidebar.caption("Zero-Execution Guarantee: Analyzed code is never imported or executed.")
 
+    # Top Header Bar
     repo_tag = Path(st.session_state.repo_path).name if st.session_state.scanned else "No repository loaded"
+    status_dot = '<span class="live-pulse-dot"></span>' if st.session_state.scanned else ''
+    status_text = "AST Index Live" if st.session_state.scanned else "Awaiting repository scan"
+
     display_html(f"""
         <div class="app-header-bar">
             <div class="app-header-left">
-                <span class="app-brand-title">Codebase Intelligence</span>
-                <span class="app-repo-badge">{repo_tag}</span>
+                <span class="app-brand-title">
+                    <span class="app-logo-badge">
+                        {get_svg_icon("logo", size=16, color="#ffffff")}
+                    </span>
+                    Codebase Intelligence
+                </span>
+                <span class="app-repo-badge">
+                    {status_dot} <span style="margin-left: 4px; font-weight: 600;">{repo_tag}</span>
+                    <span style="color: var(--ui-text-muted); margin-left: 6px;">({status_text})</span>
+                </span>
             </div>
             <div class="app-header-right">
-                AST Parsing · TF-IDF Search · ML Classification · Dependency Graph
+                <span class="ui-tag">
+                    <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#4f46e5;"></span>
+                    AST Grammar
+                </span>
+                <span class="ui-tag">
+                    <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#0284c7;"></span>
+                    TF-IDF Vectorizer
+                </span>
+                <span class="ui-tag">
+                    <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#7c3aed;"></span>
+                    Logistic Regression
+                </span>
+                <span class="ui-tag">
+                    <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#059669;"></span>
+                    NetworkX Directed Graph
+                </span>
             </div>
         </div>
     """)
 
+    # Landing / Empty State
     if not st.session_state.scanned:
-        st.markdown("""
-            <div class="ui-panel" style="padding: 24px;">
-                <h3 style="margin-top: 0;">Getting Started</h3>
-                <p style="margin-bottom: 16px;">
-                    Select or enter a Python repository path in the sidebar and click <b>Scan Repository</b> to build the structural AST index.
+        st.markdown(f"""
+            <div class="ui-panel" style="padding: 32px 28px; text-align: left;">
+                <div style="display: inline-block; padding: 4px 10px; border-radius: 6px; background-color: var(--ui-accent-subtle); border: 1px solid var(--ui-accent-border); color: var(--ui-accent); font-size: 11.5px; font-weight: 700; margin-bottom: 12px; letter-spacing: 0.05em; text-transform: uppercase;">
+                    Static Intelligence Engine
+                </div>
+                <h1 style="font-size: 28px; margin: 0 0 10px 0; font-weight: 800; letter-spacing: -0.03em;">
+                    Zero-Cloud Codebase Intelligence & Architectural Mapping
+                </h1>
+                <p style="font-size: 15px; color: var(--ui-text-secondary); max-width: 850px; line-height: 1.6; margin-bottom: 24px;">
+                    Perform deep static AST grammar discovery, natural-language code search, 6-class supervised architectural classification, unsupervised subsystem clustering, and internal import hierarchy analysis — completely locally with zero code execution.
                 </p>
                 <div class="metric-grid">
                     <div class="ui-metric-tile">
-                        <div class="ui-metric-label">Structural Parser</div>
-                        <div style="font-size: 13px; color: var(--ui-text-secondary); margin-top: 4px;">
-                            Extracts functions, classes, docstrings, and imports safely using Python <code>ast</code> without code execution.
+                        <div class="ui-metric-label">
+                            Zero Execution Guarantee
+                            <span class="metric-icon-well">{get_svg_icon("shield", size=14, color="var(--ui-accent)")}</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--ui-text-secondary); margin-top: 6px; line-height: 1.5;">
+                            Analyzed code is safely inspected with Python's standard <code>ast.NodeVisitor</code> without ever importing or executing it.
                         </div>
                     </div>
                     <div class="ui-metric-tile">
-                        <div class="ui-metric-label">Semantic Code Search</div>
-                        <div style="font-size: 13px; color: var(--ui-text-secondary); margin-top: 4px;">
-                            Ranked cosine similarity search across docstrings, signatures, and syntax using TF-IDF n-grams.
+                        <div class="ui-metric-label">
+                            Natural-Language Search
+                            <span class="metric-icon-well">{get_svg_icon("search", size=14, color="var(--ui-accent)")}</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--ui-text-secondary); margin-top: 6px; line-height: 1.5;">
+                            High-speed cosine similarity search powered by sublinear TF-IDF vector n-grams across signatures, docstrings, and code.
                         </div>
                     </div>
                     <div class="ui-metric-tile">
-                        <div class="ui-metric-label">Architectural Classifier</div>
-                        <div style="font-size: 13px; color: var(--ui-text-secondary); margin-top: 4px;">
-                            Identifies Authentication, Database, API, Logic, Utilities, and Testing roles with probability scores.
+                        <div class="ui-metric-label">
+                            Architectural Role Classifier
+                            <span class="metric-icon-well">{get_svg_icon("classifier", size=14, color="var(--ui-accent)")}</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--ui-text-secondary); margin-top: 6px; line-height: 1.5;">
+                            Supervised multiclass Logistic Regression predicting roles (Auth, DB, API, Logic, Config, Tests) with calibrated probabilities.
                         </div>
                     </div>
                     <div class="ui-metric-tile">
-                        <div class="ui-metric-label">Dependency Hierarchy</div>
-                        <div style="font-size: 13px; color: var(--ui-text-secondary); margin-top: 4px;">
-                            Directed graph resolution of internal relative and absolute imports with cycle detection.
+                        <div class="ui-metric-label">
+                            Interactive Dependency Graph
+                            <span class="metric-icon-well">{get_svg_icon("dependencies", size=14, color="var(--ui-accent)")}</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--ui-text-secondary); margin-top: 6px; line-height: 1.5;">
+                            Force-directed physics visualization mapping internal module import coupling, in-degree utilities, and circular import cycles.
                         </div>
                     </div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        col_start1, col_start2, _ = st.columns([1.5, 1.5, 3])
+        with col_start1:
+            if st.button("Load Sample Project & Explore", type="primary", use_container_width=True):
+                run_scan(default_sample)
+                st.rerun()
+        with col_start2:
+            if st.button("Scan Configured Path", use_container_width=True):
+                run_scan(repo_input)
+                st.rerun()
         return
 
+    # Tabs Navigation
     tab_overview, tab_search, tab_classify, tab_cluster, tab_deps = st.tabs([
-        "Overview",
-        "Code Search",
-        "Classification",
-        "Clustering",
-        "Dependency Graph",
+        "Codebase Overview",
+        "Natural-Language Search",
+        "Architectural Classifier",
+        "Subsystem Clustering",
+        "Dependency Hierarchy",
     ])
 
+    # 1. OVERVIEW TAB
     with tab_overview:
         parsed_files: List[ParsedFile] = st.session_state.parsed_files
         functions: List[FunctionEntity] = st.session_state.functions
         classes: List[ClassInfo] = st.session_state.classes
         total_lines = sum(pf.line_count for pf in parsed_files)
         error_files = [pf for pf in parsed_files if pf.error]
+        health_pct = 100 if not error_files else int(((len(parsed_files) - len(error_files)) / len(parsed_files)) * 100)
+        health_color = "#10b981" if health_pct == 100 else "#ef4444"
 
         st.markdown(f"""
             <div class="metric-grid">
                 <div class="ui-metric-tile">
-                    <div class="ui-metric-label">Python Files</div>
+                    <div class="ui-metric-label">Python Files <span class="metric-icon-well">{get_svg_icon("file", size=14, color="var(--ui-accent)")}</span></div>
                     <div class="ui-metric-value">{len(parsed_files)}</div>
+                    <div class="ui-metric-subtext">Discovered in repository</div>
                 </div>
                 <div class="ui-metric-tile">
-                    <div class="ui-metric-label">Total Lines of Code</div>
+                    <div class="ui-metric-label">Total Lines of Code <span class="metric-icon-well">{get_svg_icon("code", size=14, color="var(--ui-accent)")}</span></div>
                     <div class="ui-metric-value">{total_lines:,}</div>
+                    <div class="ui-metric-subtext">Clean source lines scanned</div>
                 </div>
                 <div class="ui-metric-tile">
-                    <div class="ui-metric-label">Functions & Methods</div>
+                    <div class="ui-metric-label">Functions & Methods <span class="metric-icon-well">{get_svg_icon("function", size=14, color="var(--ui-accent)")}</span></div>
                     <div class="ui-metric-value">{len(functions)}</div>
+                    <div class="ui-metric-subtext">Indexed AST entities</div>
                 </div>
                 <div class="ui-metric-tile">
-                    <div class="ui-metric-label">Classes Defined</div>
+                    <div class="ui-metric-label">Classes Defined <span class="metric-icon-well">{get_svg_icon("box", size=14, color="var(--ui-accent)")}</span></div>
                     <div class="ui-metric-value">{len(classes)}</div>
+                    <div class="ui-metric-subtext">Object models & types</div>
                 </div>
-                <div class="ui-metric-tile" style="border-left: 3px solid {'#ef4444' if error_files else 'var(--ui-border-subtle)'};">
-                    <div class="ui-metric-label">Syntax Errors</div>
-                    <div class="ui-metric-value" style="color: {'#ef4444' if error_files else 'var(--ui-text-primary)'};">{len(error_files)}</div>
+                <div class="ui-metric-tile" style="border-left: 3px solid {health_color};">
+                    <div class="ui-metric-label">AST Health Score <span class="metric-icon-well" style="background: var(--ui-accent-subtle);">{get_svg_icon("shield", size=14, color=health_color)}</span></div>
+                    <div class="ui-metric-value" style="color: {health_color};">{health_pct}%</div>
+                    <div class="ui-metric-subtext">{'All files parsed cleanly' if not error_files else f'{len(error_files)} syntax exception(s)'}</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
         if error_files:
             st.markdown("""
-                <div style="padding: 10px 14px; background-color: var(--ui-bg-elevated); border-left: 3px solid #ef4444; border-radius: 4px; margin-bottom: 16px;">
-                    <span style="font-weight: 600; font-size: 13px;">Syntax / Parsing Exceptions Encountered:</span>
+                <div style="padding: 12px 16px; background-color: var(--ui-bg-elevated); border-left: 3px solid #ef4444; border-radius: 8px; margin-bottom: 18px;">
+                    <span style="font-weight: 700; font-size: 13.5px; color: #ef4444;">Syntax / Parsing Exceptions Encountered:</span>
                 </div>
             """, unsafe_allow_html=True)
             for ef in error_files:
                 st.code(f"{ef.file_path}: {ef.error}")
 
-        st.subheader("Discovered Python Files")
+        st.markdown("### Discovered Source Files")
         file_summary = []
         for pf in parsed_files:
             file_summary.append({
@@ -307,13 +403,14 @@ def main():
             })
         st.dataframe(pd.DataFrame(file_summary), use_container_width=True, hide_index=True)
 
+    # 2. CODE SEARCH TAB
     with tab_search:
-        st.subheader("Natural-Language Code Search")
+        st.markdown("### Natural-Language Code Search")
         st.caption(
-            "Vector search over function names, parameter signatures, docstrings, and source code using TF-IDF and Cosine Similarity."
+            "Vector retrieval across function signatures, parameters, docstrings, and source code using sublinear TF-IDF and Cosine Similarity."
         )
 
-        st.markdown("<small style='color: var(--ui-text-muted); font-weight: 600;'>QUICK SEARCH PRESETS:</small>", unsafe_allow_html=True)
+        st.markdown("<small style='color: var(--ui-text-muted); font-weight: 700; letter-spacing: 0.04em;'>QUICK QUERY PRESETS:</small>", unsafe_allow_html=True)
         q1, q2, q3, q4 = st.columns(4)
         preset_query = None
         with q1:
@@ -350,18 +447,30 @@ def main():
 
             if not results:
                 st.markdown("""
-                    <div class="ui-panel" style="padding: 18px; text-align: center; color: var(--ui-text-muted);">
+                    <div class="ui-panel" style="padding: 24px; text-align: center; color: var(--ui-text-muted);">
                         No code matches found meeting the minimum relevance threshold.
                     </div>
                 """, unsafe_allow_html=True)
             else:
-                st.markdown(f"<div style='font-size: 13px; color: var(--ui-text-muted); margin-bottom: 12px;'>Showing <b>{len(results)}</b> ranked match(es):</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 13.5px; color: var(--ui-text-muted); margin-bottom: 14px;'>Showing <b>{len(results)}</b> ranked match(es):</div>", unsafe_allow_html=True)
 
                 for r in results:
                     score_pct = int(r.score * 100)
+                    meter_color = "#10b981" if score_pct >= 60 else ("#f59e0b" if score_pct >= 35 else "#6366f1")
 
-                    header_title = f"#{r.rank} · {r.full_name}() — {score_pct}% relevance"
+                    header_title = f"#{r.rank} · {r.full_name}() — {score_pct}% Match"
                     with st.expander(header_title, expanded=(r.rank == 1)):
+                        # Relevance Score Bar
+                        st.markdown(f"""
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 8px 12px; background: var(--ui-bg-elevated); border-radius: 6px; border: 1px solid var(--ui-border-subtle);">
+                                <span style="font-size: 11.5px; font-weight: 700; color: var(--ui-text-muted); text-transform: uppercase;">Match Score:</span>
+                                <div style="flex-grow: 1; height: 8px; background: var(--ui-bg-base); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: {score_pct}%; height: 100%; background: {meter_color}; border-radius: 4px;"></div>
+                                </div>
+                                <span style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; color: {meter_color};">{score_pct}%</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+
                         meta_col1, meta_col2 = st.columns(2)
                         with meta_col1:
                             st.markdown(f"<span style='font-size: 12px; color: var(--ui-text-muted);'>File:</span> <code style='font-size: 12px;'>{r.file_path}</code>", unsafe_allow_html=True)
@@ -370,7 +479,7 @@ def main():
 
                         if r.docstring:
                             st.markdown(f"""
-                                <div style="margin: 8px 0; padding: 6px 10px; background-color: var(--ui-bg-elevated); border-left: 2px solid var(--ui-border-strong); font-size: 12.5px; font-style: italic; color: var(--ui-text-secondary);">
+                                <div style="margin: 10px 0; padding: 8px 12px; background-color: var(--ui-bg-elevated); border-left: 3px solid var(--ui-accent); border-radius: 4px; font-size: 13px; font-style: italic; color: var(--ui-text-secondary);">
                                     {r.docstring}
                                 </div>
                             """, unsafe_allow_html=True)
@@ -385,10 +494,11 @@ def main():
                         )
                         display_html(code_html)
 
+    # 3. ARCHITECTURAL CLASSIFICATION TAB
     with tab_classify:
-        st.subheader("Architectural Code Classification")
+        st.markdown("### Architectural Code Classification")
         st.caption(
-            "Multiclass Logistic Regression model with TF-IDF features predicting the architectural role of discovered functions."
+            "Supervised multiclass Logistic Regression model with calibrated probability distributions across 6 core architectural layers."
         )
 
         classifier = get_classifier()
@@ -398,23 +508,23 @@ def main():
         if df is not None and not df.empty:
             cat_counts = df["Category"].value_counts()
 
-            c_chart, c_filter = st.columns([1, 1])
+            c_chart, c_filter = st.columns([1.2, 1])
             with c_chart:
-                st.markdown("#### Category Distribution")
-                st.bar_chart(cat_counts, color="#0969da" if not is_dark else "#3b82f6")
+                st.markdown("#### Architectural Role Breakdown")
+                st.bar_chart(cat_counts, color="#6366f1" if is_dark else "#4f46e5")
 
             with c_filter:
-                st.markdown("#### Filter Entities")
-                f_cat = st.selectbox("Role Filter", ["All Categories"] + CATEGORIES)
-                conf_min = st.slider("Minimum Confidence", 0.0, 1.0, 0.0, step=0.05)
+                st.markdown("#### Filter Functions")
+                f_cat = st.selectbox("Filter by Category", ["All Categories"] + CATEGORIES)
+                conf_min = st.slider("Minimum Confidence Threshold", 0.0, 1.0, 0.0, step=0.05)
 
                 filtered_df = df[df["Confidence"] >= conf_min]
                 if f_cat != "All Categories":
                     filtered_df = filtered_df[filtered_df["Category"] == f_cat]
 
-                st.markdown(f"<div style='font-size: 13px; color: var(--ui-text-muted);'>Showing <b>{len(filtered_df)}</b> of {len(df)} functions:</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 13px; color: var(--ui-text-muted);'>Displaying <b>{len(filtered_df)}</b> of {len(df)} functions</div>", unsafe_allow_html=True)
 
-            st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
             for _, row in filtered_df.iterrows():
                 entity: FunctionEntity = row["Entity"]
@@ -424,19 +534,20 @@ def main():
                 with st.expander(f"{row['Function']}() · {category} ({conf_pct}% confidence)"):
                     badge_html = render_category_tag(category, row["Confidence"], is_dark=is_dark)
                     st.markdown(f"""
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                            {badge_html}
-                            <span style="font-size: 12px; color: var(--ui-text-muted);">
-                                Defined in <code>{row['File']}</code> (lines {row['Lines']})
-                            </span>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                {badge_html}
+                                <span style="font-size: 12.5px; color: var(--ui-text-muted);">
+                                    Defined in <code>{row['File']}</code> (lines {row['Lines']})
+                                </span>
+                            </div>
                         </div>
                     """, unsafe_allow_html=True)
 
-                    st.markdown("<div style='font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--ui-text-muted); margin-bottom: 4px;'>Class Probabilities:</div>", unsafe_allow_html=True)
-                    prob_cols = st.columns(len(CATEGORIES))
-                    for col, (c_name, c_prob) in zip(prob_cols, row["Probabilities"].items()):
-                        c_short = c_name.split()[0]
-                        col.metric(c_short, f"{int(c_prob * 100)}%")
+                    # Modern Horizontal Multi-Class Probability Bars
+                    st.markdown("<div style='font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--ui-text-muted); margin-bottom: 6px;'>Calibrated Class Probabilities:</div>", unsafe_allow_html=True)
+                    prob_bars_html = render_probability_bars(row["Probabilities"], is_dark=is_dark)
+                    display_html(f"<div style='padding: 8px 12px; background: var(--ui-bg-elevated); border-radius: 6px; border: 1px solid var(--ui-border-subtle); margin-bottom: 12px;'>{prob_bars_html}</div>")
 
                     code_html = render_code_block(
                         source_code=entity.source_code,
@@ -447,13 +558,14 @@ def main():
                     )
                     display_html(code_html)
 
-            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
             st.caption(f"Note: {info['disclaimer']}")
         else:
             st.info("No functions available to classify.")
 
+    # 4. SUBSYSTEM CLUSTERING TAB
     with tab_cluster:
-        st.subheader("Topic Discovery & Code Clustering")
+        st.markdown("### Subsystem Topic Discovery & Code Clustering")
         st.caption(
             "Unsupervised K-Means clustering in the TF-IDF feature space identifying functional subsystems without manual tags."
         )
@@ -462,7 +574,7 @@ def main():
         if functions:
             max_k_possible = min(15, max(2, len(functions)))
             k_val = st.slider(
-                "Number of Clusters (k)",
+                "Number of Subsystem Clusters (k)",
                 min_value=1,
                 max_value=max_k_possible,
                 value=min(4, max_k_possible),
@@ -474,19 +586,19 @@ def main():
             if outcome.note:
                 st.caption(outcome.note)
 
-            st.markdown(f"<div style='font-size: 13px; color: var(--ui-text-muted); margin-bottom: 12px;'>Discovered <b>{outcome.effective_k}</b> cluster(s) across {len(functions)} functions:</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 13.5px; color: var(--ui-text-muted); margin-bottom: 14px;'>Discovered <b>{outcome.effective_k}</b> subsystem cluster(s) across {len(functions)} functions:</div>", unsafe_allow_html=True)
 
             for group in outcome.groups:
                 terms_str = ", ".join(group.representative_terms[:4]) if group.representative_terms else "general"
                 with st.expander(f"Cluster {group.cluster_id}: {group.size} function(s) — [{terms_str}]", expanded=True):
-                    st.markdown("<div style='font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--ui-text-muted); margin-bottom: 4px;'>Representative Terms:</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--ui-text-muted); margin-bottom: 6px;'>Representative Vocabulary Keywords:</div>", unsafe_allow_html=True)
                     terms_badges = " ".join(
-                        f"<span class='ui-tag' style='background: var(--ui-bg-elevated); border: 1px solid var(--ui-border-subtle); color: var(--ui-text-primary); margin-right: 4px;'>{term}</span>"
+                        f"<span class='ui-tag' style='background: var(--ui-bg-elevated); border: 1px solid var(--ui-border-subtle); color: var(--ui-text-primary); margin-right: 6px;'>#{term}</span>"
                         for term in group.representative_terms
                     )
                     st.markdown(terms_badges or "None", unsafe_allow_html=True)
 
-                    st.markdown("<div style='font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--ui-text-muted); margin-top: 10px; margin-bottom: 4px;'>Assigned Functions:</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--ui-text-muted); margin-top: 14px; margin-bottom: 8px;'>Assigned Functions:</div>", unsafe_allow_html=True)
                     for fn in group.entities:
                         with st.expander(f"{fn.full_name}() · {fn.file_path}:{fn.line_start}"):
                             code_html = render_code_block(
@@ -500,8 +612,9 @@ def main():
         else:
             st.info("No functions available to cluster.")
 
+    # 5. DEPENDENCY GRAPH TAB
     with tab_deps:
-        st.subheader("Internal Module Dependency Graph")
+        st.markdown("### Internal Module Dependency Hierarchy")
         st.caption(
             "Directed graph of internal file-level imports constructed using NetworkX. Analyzes architectural couplings and detects circular dependencies."
         )
@@ -511,23 +624,29 @@ def main():
 
         if dep_graph is not None and metrics is not None:
             has_cycle = metrics["cycle_count"] > 0
+            cycle_color = "#ef4444" if has_cycle else "#10b981"
+
             st.markdown(f"""
                 <div class="metric-grid">
                     <div class="ui-metric-tile">
-                        <div class="ui-metric-label">Internal Files (Nodes)</div>
+                        <div class="ui-metric-label">Internal Files (Nodes) <span class="metric-icon-well">{get_svg_icon("file", size=14, color="var(--ui-accent)")}</span></div>
                         <div class="ui-metric-value">{metrics['num_nodes']}</div>
+                        <div class="ui-metric-subtext">Active repository modules</div>
                     </div>
                     <div class="ui-metric-tile">
-                        <div class="ui-metric-label">Import Edges</div>
+                        <div class="ui-metric-label">Import Edges <span class="metric-icon-well">{get_svg_icon("link", size=14, color="var(--ui-accent)")}</span></div>
                         <div class="ui-metric-value">{metrics['num_edges']}</div>
+                        <div class="ui-metric-subtext">Directed dependency links</div>
                     </div>
-                    <div class="ui-metric-tile" style="border-left: 3px solid {'#ef4444' if has_cycle else 'var(--ui-border-subtle)'};">
-                        <div class="ui-metric-label">Circular Cycles</div>
-                        <div class="ui-metric-value" style="color: {'#ef4444' if has_cycle else 'var(--ui-text-primary)'};">{metrics['cycle_count']}</div>
+                    <div class="ui-metric-tile" style="border-left: 3px solid {cycle_color};">
+                        <div class="ui-metric-label">Circular Import Cycles <span class="metric-icon-well" style="background: {'rgba(16, 185, 129, 0.1)' if not has_cycle else 'rgba(239, 68, 68, 0.1)'};">{get_svg_icon("cycle", size=14, color=cycle_color)}</span></div>
+                        <div class="ui-metric-value" style="color: {cycle_color};">{metrics['cycle_count']}</div>
+                        <div class="ui-metric-subtext">{'Zero cycles detected (Clean)' if not has_cycle else 'Dangerous circular couplings'}</div>
                     </div>
                     <div class="ui-metric-tile">
-                        <div class="ui-metric-label">Isolated Files</div>
+                        <div class="ui-metric-label">Isolated Modules <span class="metric-icon-well">{get_svg_icon("isolated", size=14, color="var(--ui-accent)")}</span></div>
                         <div class="ui-metric-value">{len(metrics['isolated_files'])}</div>
+                        <div class="ui-metric-subtext">Zero internal imports</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -535,15 +654,29 @@ def main():
             if metrics["cycles"]:
                 st.error(f"Circular import cycle detected: {metrics['cycles']}")
 
-            fig = render_graph_figure(dep_graph, is_dark=is_dark)
-            st.pyplot(fig)
-            plt.close(fig)
+            # Visualization Mode Toggle
+            v_col1, v_col2 = st.columns([2, 1])
+            with v_col1:
+                graph_mode = st.radio(
+                    "Graph Mode",
+                    options=["Interactive Physics Graph (Drag & Zoom)", "Hi-Res Publication Diagram"],
+                    horizontal=True,
+                    label_visibility="collapsed",
+                )
 
-            st.markdown("### Coupling Metrics Breakdown")
+            if "Interactive" in graph_mode:
+                interactive_html = render_interactive_graph_html(dep_graph, is_dark=is_dark, height_px=550)
+                components.html(interactive_html, height=560)
+            else:
+                fig = render_graph_figure(dep_graph, is_dark=is_dark)
+                st.pyplot(fig)
+                plt.close(fig)
+
+            st.markdown("### Architectural Coupling Breakdown")
             c_dep1, c_dep2 = st.columns(2)
             with c_dep1:
-                st.markdown("#### In-Degree (Most Depended-Upon Files)")
-                st.caption("Core foundational utilities that other modules import.")
+                st.markdown("#### In-Degree (Core Utility Modules)")
+                st.caption("Foundational utilities that multiple other modules depend on.")
                 in_data = [
                     {"File": f, "Imported By (Count)": count}
                     for f, count in metrics["most_depended_on"]
@@ -551,15 +684,15 @@ def main():
                 st.dataframe(pd.DataFrame(in_data), use_container_width=True, hide_index=True)
 
             with c_dep2:
-                st.markdown("#### Out-Degree (High Consumer Files)")
-                st.caption("Orchestrator modules that import multiple submodules.")
+                st.markdown("#### Out-Degree (High Consumer Modules)")
+                st.caption("Orchestrators or services that import multiple internal modules.")
                 out_data = [
                     {"File": f, "Imports (Count)": count}
                     for f, count in metrics["most_dependencies"]
                 ]
                 st.dataframe(pd.DataFrame(out_data), use_container_width=True, hide_index=True)
 
-            with st.expander("Internal Edge Dependency List"):
+            with st.expander("Detailed Internal Edge Dependency Matrix"):
                 edge_rows = []
                 for u, v, data in dep_graph.edges(data=True):
                     edge_rows.append({

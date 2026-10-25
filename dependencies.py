@@ -1,6 +1,8 @@
 
 
 from __future__ import annotations
+import json
+import html
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Any
 import networkx as nx
@@ -306,4 +308,206 @@ def render_graph_figure(
     ax.axis("off")
     fig.tight_layout()
     return fig
+
+
+def render_interactive_graph_html(
+    graph: nx.DiGraph, is_dark: bool = False, height_px: int = 540
+) -> str:
+    if graph.number_of_nodes() == 0:
+        bg = "#12151c" if is_dark else "#ffffff"
+        text_color = "#94a3b8"
+        return f"""
+        <div style="background:{bg};height:{height_px}px;display:flex;align-items:center;justify-content:center;color:{text_color};font-family:sans-serif;border-radius:10px;border:1px dashed #334155;">
+            No internal dependencies to display.
+        </div>
+        """
+
+    try:
+        cycle_nodes = set().union(*nx.simple_cycles(graph))
+    except Exception:
+        cycle_nodes = set()
+
+    nodes_data = []
+    for node in graph.nodes:
+        in_deg = graph.in_degree(node)
+        out_deg = graph.out_degree(node)
+        parts = Path(node).parts
+        short_label = "/".join(parts[-2:]) if len(parts) > 1 else parts[0]
+
+        if node in cycle_nodes:
+            bg_col = "#ef4444"
+            border_col = "#b91c1c"
+        elif in_deg >= 2:
+            bg_col = "#6366f1" if is_dark else "#4f46e5"
+            border_col = "#818cf8" if is_dark else "#3730a3"
+        elif out_deg >= 2:
+            bg_col = "#a855f7" if is_dark else "#7c3aed"
+            border_col = "#c084fc" if is_dark else "#5b21b6"
+        else:
+            bg_col = "#10b981" if is_dark else "#059669"
+            border_col = "#34d399" if is_dark else "#047857"
+
+        tooltip = (
+            f"<b>{html.escape(node)}</b><br>"
+            f"• In-degree (imported by): {in_deg}<br>"
+            f"• Out-degree (imports): {out_deg}"
+        )
+
+        nodes_data.append({
+            "id": node,
+            "label": short_label,
+            "title": tooltip,
+            "shape": "box",
+            "margin": 10,
+            "color": {
+                "background": bg_col,
+                "border": border_col,
+                "highlight": {
+                    "background": bg_col,
+                    "border": "#ffffff" if is_dark else "#0f172a"
+                }
+            },
+            "font": {
+                "color": "#ffffff",
+                "face": "JetBrains Mono, Consolas, monospace",
+                "size": 12,
+                "bold": True
+            },
+            "shadow": {"enabled": True, "color": "rgba(0,0,0,0.25)", "size": 6}
+        })
+
+    edges_data = []
+    edge_color = "#64748b" if is_dark else "#94a3b8"
+    edge_highlight = "#38bdf8" if is_dark else "#0284c7"
+    for u, v, data in graph.edges(data=True):
+        weight = data.get("weight", 1)
+        edges_data.append({
+            "from": u,
+            "to": v,
+            "arrows": "to",
+            "color": {"color": edge_color, "highlight": edge_highlight},
+            "width": 1.5 + min(weight * 0.5, 3),
+            "smooth": {"type": "curvedCW", "roundness": 0.15}
+        })
+
+    container_bg = "#0d1117" if is_dark else "#f8fafc"
+    card_border = "#21262d" if is_dark else "#e2e8f0"
+    text_color = "#e6edf3" if is_dark else "#0f172a"
+    sub_color = "#8b949e" if is_dark else "#64748b"
+    legend_bg = "rgba(22, 27, 34, 0.88)" if is_dark else "rgba(255, 255, 255, 0.92)"
+
+    nodes_json = json.dumps(nodes_data)
+    edges_json = json.dumps(edges_data)
+
+    cycle_legend_item = "<div class='legend-item'><span class='legend-dot' style='background:#ef4444;'></span> Circular Cycle</div>" if cycle_nodes else ""
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+      <style>
+        * {{ box-sizing: border-box; }}
+        body {{
+          margin: 0;
+          padding: 0;
+          background: {container_bg};
+          overflow: hidden;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }}
+        #mynetwork {{
+          width: 100%;
+          height: {height_px}px;
+          border-radius: 10px;
+          border: 1px solid {card_border};
+          background: {container_bg};
+        }}
+        .graph-controls {{
+          position: absolute;
+          top: 12px;
+          left: 14px;
+          background: {legend_bg};
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid {card_border};
+          border-radius: 6px;
+          padding: 6px 12px;
+          font-size: 11.5px;
+          color: {sub_color};
+          pointer-events: none;
+          z-index: 10;
+        }}
+        .graph-legend {{
+          position: absolute;
+          bottom: 12px;
+          right: 14px;
+          background: {legend_bg};
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid {card_border};
+          border-radius: 8px;
+          padding: 10px 14px;
+          font-size: 11px;
+          color: {text_color};
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          z-index: 10;
+        }}
+        .legend-item {{
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }}
+        .legend-dot {{
+          width: 10px;
+          height: 10px;
+          border-radius: 3px;
+          flex-shrink: 0;
+        }}
+      </style>
+    </head>
+    <body>
+      <div class="graph-controls">
+        <b>Interactive Physics Graph:</b> Scroll to zoom • Drag to pan • Drag nodes to explore
+      </div>
+      <div id="mynetwork"></div>
+      <div class="graph-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:{"#6366f1" if is_dark else "#4f46e5"};"></span> Core Utility (In-Degree ≥ 2)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:{"#a855f7" if is_dark else "#7c3aed"};"></span> High Consumer (Out-Degree ≥ 2)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:{"#10b981" if is_dark else "#059669"};"></span> Standard Module</div>
+        {cycle_legend_item}
+      </div>
+      <script type="text/javascript">
+        var container = document.getElementById('mynetwork');
+        var data = {{
+          nodes: new vis.DataSet({nodes_json}),
+          edges: new vis.DataSet({edges_json})
+        }};
+        var options = {{
+          physics: {{
+            solver: 'forceAtlas2Based',
+            forceAtlas2Based: {{
+              gravitationalConstant: -60,
+              centralGravity: 0.015,
+              springLength: 110,
+              springConstant: 0.08,
+              damping: 0.4
+            }},
+            stabilization: {{ iterations: 120 }}
+          }},
+          interaction: {{
+            hover: true,
+            tooltipDelay: 100,
+            navigationButtons: false,
+            keyboard: false
+          }}
+        }};
+        var network = new vis.Network(container, data, options);
+      </script>
+    </body>
+    </html>
+    """
+
 
